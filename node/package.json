@@ -1,0 +1,14 @@
+{
+  "name": "iot",
+  "version": "0.0.0",
+  "description": "Standard IoT API to link everything",
+  "main": "lib/iot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "iot"
+  ],
+  "author": "Fred Chien <cfsghost@gmail.com>",
+  "license": "MIT"
+}
