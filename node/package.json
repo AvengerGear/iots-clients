@@ -10,5 +10,8 @@
     "iot"
   ],
   "author": "Fred Chien <cfsghost@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "mqtt": "~0.3.10"
+  }
 }
