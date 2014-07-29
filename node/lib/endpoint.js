@@ -8,13 +8,13 @@ var Endpoint = module.exports = function(id, passphrase) {
 	var self = this;
 
 	self.service = {
-		host: 'localhost',
+		host: 'iots.io',
 		port: 8000,
 		secure: false
 	};
 
 	self.mqtt = {
-		host: 'localhost',
+		host: 'iots.io',
 		port: 1883
 	};
 
