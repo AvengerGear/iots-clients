@@ -9,7 +9,7 @@ var Endpoint = module.exports = function(id, passphrase) {
 
 	self.service = {
 		host: 'iots.io',
-		port: 8000,
+		port: 80,
 		secure: false
 	};
 
