@@ -12,7 +12,7 @@ var IoT = module.exports = function(endpoint) {
 	self.channels = [];
 	self.middlewares = {
 		connect: [
-			require('./middleware/connect')
+			require('./middleware/connect'),
 		],
 		message: [
 			require('./middleware/message')
@@ -25,29 +25,38 @@ util.inherits(IoT, events.EventEmitter);
 IoT.prototype.connect = function() {
 	var self = this;
 
-	// Setup channels
-	self.channels.publicChannel = self.endpoint.id;
-	self.channels.privateChannel = 'private/' + self.endpoint.id;
+	self.endpoint.auth({}, function(err) {
 
-	var client = self.endpoint.createConnection();
+		if (err) {
+			self.emit('error', err);
+			return;
+		}
 
-	client.on('connect', function() {
+		// Setup channels
+		self.channels.collectionChannel = 'collection/' + self.endpoint.collectionId;
+		self.channels.publicChannel = self.endpoint.id;
+		self.channels.privateChannel = 'private/' + self.endpoint.id;
 
-		self.dispatcher.middleware('connect', client, function() {
-			self.emit('connected');
+		var client = self.endpoint.createConnection();
+
+		client.on('connect', function() {
+
+			self.dispatcher.middleware('connect', client, function() {
+				self.emit('connected');
+			});
 		});
-	});
 
-	// Received a message
-	client.on('message', function(topic, message, pkg) {
-		var data = {
-			topic: topic,
-			message: message,
-			pkg: pkg
-		};
+		// Received a message
+		client.on('message', function(topic, message, pkg) {
+			var data = {
+				topic: topic,
+				message: message,
+				pkg: pkg
+			};
 
-		self.dispatcher.middleware('message', data, function() {
-			self.emit('message', JSON.parse(data.message));
+			self.dispatcher.middleware('message', data, function() {
+				self.emit('message', JSON.parse(data.message));
+			});
 		});
 	});
 };

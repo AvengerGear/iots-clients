@@ -8,5 +8,8 @@ var connect = module.exports = function(iot, client, next) {
 	// Subscribe to private channel
 	client.subscribe(iot.channels.privateChannel);
 
+	// Subscribe to collection channel
+	client.subscribe(iot.channels.collectionChannel);
+
 	next();
 };
