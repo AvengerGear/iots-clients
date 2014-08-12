@@ -12,6 +12,7 @@
   "author": "Fred Chien <cfsghost@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "mqtt": "~0.3.10"
+    "mqtt": "~0.3.10",
+    "amqp": "~0.2.0"
   }
 }
