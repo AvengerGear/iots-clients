@@ -9,7 +9,7 @@ var IoT = module.exports = function(endpoint) {
 
 	self.endpoint = endpoint;
 	self.dispatcher = new Dispatcher(self);
-	self.channels = [];
+	self.channels = {};
 	self.middlewares = {
 		connect: [
 			require('./middleware/connect'),
@@ -33,9 +33,9 @@ IoT.prototype.connect = function() {
 		}
 
 		// Setup channels
-		self.channels.collectionChannel = 'collection/' + self.endpoint.collectionId;
-		self.channels.publicChannel = self.endpoint.id;
-		self.channels.privateChannel = 'private/' + self.endpoint.id;
+		self.channels.systemChannel = '00000000-0000-0000-0000-000000000000';
+		self.channels.collectionChannel = self.endpoint.collectionId;
+		self.channels.endpointChannel = self.endpoint.collectionId + '.' + self.endpoint.id;
 
 		var client = self.endpoint.createConnection();
 
@@ -68,18 +68,85 @@ IoT.prototype.use = function(eventName, middleware) {
 	self.middlewares[eventName].push(middleware);
 };
 
-IoT.prototype.send = function(target, message) {
+IoT.prototype.send = function() {
 	var self = this;
 
-	self.endpoint.client.publish('private/' + target, JSON.stringify({
+	var target = null;
+	var collection = null;
+	var endpoint = null;
+	var topic = null;
+	var message = null;
+	
+	if (argument.length == 2) {
+		collection = arguments[0];
+		message = arguments[1];
+		target = collection;
+	} else if (argument.length == 3) {
+		collection = arguments[0];
+		endpoint = arguments[1];
+		message = arguments[2];
+		target = collection + '.' + endpoint;
+	} else if (argument.length == 4) {
+		collection = arguments[0];
+		endpoint = arguments[1];
+		topic = arguments[2];
+		message = arguments[3];
+		target = collection + '.' + endpoint + '.' + topic;
+	} else {
+		throw new Error('incorrect parameters');
+	}
+
+	// Sending
+	self.endpoint.client.publish(target, JSON.stringify({
 		from: self.endpoint.id,
 		content: message
 	}));
 };
 
-IoT.prototype.publish = function(target, message) {
+IoT.prototype.sendToEndpoint = function() {
 	var self = this;
 
+	var target = null;
+	var endpoint = null;
+	var topic = null;
+	var message = null;
+	
+	if (argument.length == 2) {
+		endpoint = arguments[0];
+		message = arguments[1];
+		target = self.endpoint.collectionId + '.' + endpoint;
+	} else if (argument.length == 3) {
+		endpoint = arguments[0];
+		topic = arguments[1];
+		message = arguments[2];
+		target = self.endpoint.collectionId + '.' + endpoint + '.' + topic;
+	} else {
+		throw new Error('incorrect parameters');
+	}
+
+	// Sending
+	self.endpoint.client.publish(target, JSON.stringify({
+		from: self.endpoint.id,
+		content: message
+	}));
+};
+
+IoT.prototype.sendToTopic = function() {
+	var self = this;
+
+	var target = null;
+	var topic = null;
+	var message = null;
+	
+	if (argument.length == 2) {
+		topic = arguments[0];
+		message = arguments[1];
+		target = self.endpoint.collectionId + '.' + self.endpoint.id + '.' + topic;
+	} else {
+		throw new Error('incorrect parameters');
+	}
+
+	// Sending
 	self.endpoint.client.publish(target, JSON.stringify({
 		from: self.endpoint.id,
 		content: message
