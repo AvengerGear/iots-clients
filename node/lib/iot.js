@@ -4,6 +4,10 @@ var events = require('events');
 var util = require('util');
 var Dispatcher = require('./dispatcher');
 
+/**
+ * Create a new Proxy of IoT Network
+ * @class
+ */
 var IoT = module.exports = function(endpoint) {
 	var self = this;
 
@@ -22,6 +26,11 @@ var IoT = module.exports = function(endpoint) {
 
 util.inherits(IoT, events.EventEmitter);
 
+/**
+ * Connect to IoT Network
+ *
+ * @this {IoT}
+ */
 IoT.prototype.connect = function() {
 	var self = this;
 
@@ -61,11 +70,82 @@ IoT.prototype.connect = function() {
 	});
 };
 
+
+/**
+ * Add middleware to process messages
+ *
+ * @this {IoT}
+ * @param {string} eventName Event name
+ * @param {Object} middleware Middleware object
+ */
 IoT.prototype.use = function(eventName, middleware) {
 	var self = this;
 
 	// Add to middleware list
 	self.middlewares[eventName].push(middleware);
+};
+
+/**
+ * @typedef {Object} TopicOptions
+ * @property {boolean} [private=false] Indicates whether the topic is private. 
+ */
+
+/**
+ * Create a new topic
+ *
+ * @this {IoT}
+ * @param {string} topicName Topic name
+ * @param {TopicOptions} [options] The options is optional
+ * @param {Function} callback Called with result
+ */
+IoT.prototype.createTopic = function(topicName, options, callback) {
+	var self = this;
+
+	// TODO: connect to server to create a new topic
+	callback();
+};
+
+/**
+ * Delete a topic
+ *
+ * @this {IoT}
+ * @param {string} topicId Topic ID
+ * @param {Function} callback Called with result
+ */
+IoT.prototype.deleteTopic = function(topicId, callback) {
+	var self = this;
+
+	// TODO: connect to server to delete topic
+	callback();
+};
+
+/**
+ * Update topic settings
+ *
+ * @this {IoT}
+ * @param {string} topicId Topic ID
+ * @param {TopicOptions} [options] The options is optional
+ * @param {Function} callback Called with result
+ */
+IoT.prototype.updateTopic = function(topicId, options, callback) {
+	var self = this;
+
+	// TODO: connect to server to update topic
+	callback();
+};
+
+/**
+ * Get topic information
+ *
+ * @this {IoT}
+ * @param {string} topicId Topic ID
+ * @param {Function} callback Called with result
+ */
+IoT.prototype.getTopic = function(topicId, callback) {
+	var self = this;
+
+	// TODO: connect to server to update topic
+	callback();
 };
 
 IoT.prototype.send = function() {
