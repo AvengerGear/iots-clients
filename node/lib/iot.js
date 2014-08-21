@@ -88,6 +88,11 @@ IoT.prototype.use = function(eventName, middleware) {
 /**
  * @typedef {Object} TopicOptions
  * @property {boolean} [private=false] Indicates whether the topic is private. 
+ * @property {boolean} [teamAccessable=false] Indicates whether the topic is accessable by other endpoints in the same collection. 
+ * @property {array} [collectionWhitelist=[]] Collections in whitelist are allowed to access topic.
+ * @property {array} [whitelist=[]] Endpoints in whitelist are allowed to access topic.
+ * @property {array} [blacklist=[]] Endpoints in blacklist are disallowed to access topic.
+ * @property {string} [accessKey=null] Indicates whether the topic is accessable with access key. 
  */
 
 /**
@@ -96,7 +101,7 @@ IoT.prototype.use = function(eventName, middleware) {
  * @this {IoT}
  * @param {string} topicName Topic name
  * @param {TopicOptions} [options] The options is optional
- * @param {Function} callback Called with result
+ * @param {Function} callback Called with result. Return a topic ID if success.
  */
 IoT.prototype.createTopic = function(topicName, options, callback) {
 	var self = this;
@@ -183,6 +188,13 @@ IoT.prototype.send = function() {
 	}));
 };
 
+/**
+ * Send message to specific endpoint
+ *
+ * @param {string} target Target endpoint ID
+ * @param {string} topic Topic ID
+ * @param {string} message Message
+ */
 IoT.prototype.sendToEndpoint = function() {
 	var self = this;
 
@@ -211,6 +223,12 @@ IoT.prototype.sendToEndpoint = function() {
 	}));
 };
 
+/**
+ * Send message to specific topic
+ *
+ * @param {string} topic Topic ID
+ * @param {string} message Message
+ */
 IoT.prototype.sendToTopic = function() {
 	var self = this;
 
