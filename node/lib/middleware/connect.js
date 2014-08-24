@@ -2,6 +2,10 @@
 
 var connect = module.exports = function(iot, client, next) {
 
+	console.log(iot.channels.systemChannel);
+	console.log(iot.channels.collectionChannel);
+	console.log(iot.channels.endpointChannel);
+
 	// Subscribe to system channel
 	client.subscribe(iot.channels.systemChannel);
 
