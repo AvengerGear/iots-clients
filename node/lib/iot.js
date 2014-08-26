@@ -162,16 +162,16 @@ IoT.prototype.send = function() {
 	var topic = null;
 	var message = null;
 	
-	if (argument.length == 2) {
+	if (arguments.length == 2) {
 		collection = arguments[0];
 		message = arguments[1];
 		target = collection;
-	} else if (argument.length == 3) {
+	} else if (arguments.length == 3) {
 		collection = arguments[0];
 		endpoint = arguments[1];
 		message = arguments[2];
 		target = collection + '.' + endpoint;
-	} else if (argument.length == 4) {
+	} else if (arguments.length == 4) {
 		collection = arguments[0];
 		endpoint = arguments[1];
 		topic = arguments[2];
@@ -203,11 +203,11 @@ IoT.prototype.sendToEndpoint = function() {
 	var topic = null;
 	var message = null;
 	
-	if (argument.length == 2) {
+	if (arguments.length == 2) {
 		endpoint = arguments[0];
 		message = arguments[1];
 		target = self.endpoint.collectionId + '.' + endpoint;
-	} else if (argument.length == 3) {
+	} else if (arguments.length == 3) {
 		endpoint = arguments[0];
 		topic = arguments[1];
 		message = arguments[2];
@@ -236,7 +236,7 @@ IoT.prototype.sendToTopic = function() {
 	var topic = null;
 	var message = null;
 	
-	if (argument.length == 2) {
+	if (arguments.length == 2) {
 		topic = arguments[0];
 		message = arguments[1];
 		target = self.endpoint.collectionId + '.' + self.endpoint.id + '.' + topic;

@@ -20,5 +20,7 @@ var message = module.exports = function(iot, data, next) {
 		return;
 	}
 
+	iot.emit('topic', data.topic, JSON.parse(data.message));
+
 	next();
 };
