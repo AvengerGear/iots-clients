@@ -1,24 +1,15 @@
 "use strict";
 
-var Dispatcher = module.exports = function(iot) {
+var Dispatcher = module.exports = function(network) {
 	var self = this;
 
-	self.iot = iot;
-};
-
-Dispatcher.prototype.privateMsg = function(endpoint, message) {
-	var self = this;
-
-	switch(message.type) {
-	case 'info':
-		break;
-	}
+	self.network = network;
 };
 
 Dispatcher.prototype.middleware = function(name, data, complete) {
 	var self = this;
 
-	var handlers = self.iot.middlewares[name];
+	var handlers = self.network.middlewares[name];
 	if (handlers.length == 0)
 		return;
 
@@ -28,11 +19,11 @@ Dispatcher.prototype.middleware = function(name, data, complete) {
 		setImmediate(function() {
 			index++;
 			if (handlers[index])
-				handlers[index](self.iot, data, next);
+				handlers[index](self.network, data, next);
 			else
 				complete();
 		});
 	}
 
-	handlers[index](self.iot, data, next);
+	handlers[index](self.network, data, next);
 };

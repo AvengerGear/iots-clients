@@ -1,19 +1,26 @@
 "use strict";
 
-var connect = module.exports = function(iot, client, next) {
+var connect = module.exports = function(network, endpoint, next) {
 
-	console.log(iot.channels.systemChannel);
-	console.log(iot.channels.collectionChannel);
-	console.log(iot.channels.endpointChannel);
+	// Subscribe to private channel to receive messages from server
+	endpoint.backend.subscribe('private/' + endpoint.id);
 
-	// Subscribe to system channel
-	client.subscribe(iot.channels.systemChannel);
+	// Subscribe basic channel and topic
+	endpoint.backend.subscribe('00000000-0000-0000-0000-000000000000');
 
-	// Subscribe to collection channel
-	client.subscribe(iot.channels.collectionChannel);
+	// Getting endpoint information from server
+	endpoint.backend.systemCall('Endpoint', 1, {
+		cmd: 'Auth',
+		passphrase: endpoint.passphrase
+	}, function(err, packet) {
 
-	// Subscribe to endpoint channel
-	client.subscribe(iot.channels.endpointChannel);
+		// Getting collection ID
+		endpoint.collectionId = packet.content._collection;
 
-	next();
+		// Subscribe to collection and own channels
+		endpoint.backend.subscribe(endpoint.collectionId);
+		endpoint.backend.subscribe(endpoint.collectionId + '/' + endpoint.id);
+
+		next();
+	});
 };

@@ -1,26 +1,7 @@
 "use strict";
 
-var message = module.exports = function(iot, data, next) {
-
-	// System
-	if (data.topic == iot.channels.systemChannel) {
-		iot.emit('system', JSON.parse(data.message));
-		return;
-	}
-
-	// Collection
-	if (data.topic == iot.channels.collectionChannel) {
-		iot.emit('collection', JSON.parse(data.message));
-		return;
-	}
-
-	// Endpoint
-	if (data.topic == iot.channels.endpointChannel) {
-		iot.emit('private_message', JSON.parse(data.message));
-		return;
-	}
-
-	iot.emit('topic', data.topic, JSON.parse(data.message));
+var message = module.exports = function(network, data, next) {
+	var msg = null;
 
 	next();
 };

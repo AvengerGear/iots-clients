@@ -1,140 +1,122 @@
 "use strict";
 
-var http = require('http');
-var querystring = require('querystring');
-var mqtt = require('mqtt');
+var events = require('events');
+var util = require('util');
+var MQTTBackend = require('./mqtt');
 
 var Endpoint = module.exports = function(id, passphrase) {
 	var self = this;
 
-	self.service = {
-		host: 'iots.io',
-		port: 80,
-		secure: false
-	};
-
-	self.mqtt = {
-		host: 'iots.io',
-		port: 1883
-	};
-
-	self.client = null;
 	self.id = id || null;
-	self.passphrase = passphrase || '';
+	self.passphrase = passphrase || null;
 	self.collectionId = null;
+	self.backendType = 'mqtt';
+	self.backend = null;
 };
 
-Endpoint.prototype.register = function(collectionId, accessKey, complete) {
+util.inherits(Endpoint, events.EventEmitter);
+
+Endpoint.prototype.register = function(options, callback) {
 	var self = this;
 
-	// TODO: secure connection
+	if (options.backendType)
+		self.backendType = options.backendType;
 
-	// Preparing request
-	var data = {
-		accessKey: accessKey
-	};
+	if (self.backendType == 'mqtt') {
+		self.backend = new MQTTBackend(self);
+	} else {
+		callback(new Error('No such backend'));
+		return;
+	}
 
-	var body = querystring.stringify(data);
-
-	// Send request to service to register a new endpoint
-	var req = http.request({
-		hostname: self.service.host,
-		port: self.service.port,
-		path: '/apis/collection/' + collectionId,
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Content-Length': body.length
-		}
-	}, function(res) {
-
-		if (res.statusCode != 200) {
-			if (complete)
-				complete(new Error('Failed to register this endpoint'));
-
+	self.backend.register(options.collectionId || '', options.accessKey || '', options, function(err, endpointInfo) {
+		if (err) {
+			callback(err);
 			return;
 		}
 
-		// Getting endpoint information
-		res.setEncoding('utf8');
-		res.on('data', function(chunk) {
-			var info = JSON.parse(chunk);
-			self.id = info._id;
-			self.passphrase = info.passphrase;
-			self.collectionId = collectionId;
+		self.id = endpointInfo.endpointId;
+		self.passphrase = endpointInfo.passphrase;
+		self.collectionId = options.collectionId;
 
-			if (complete)
-				complete(null, self);
-		});
+		callback(null);
 	});
-
-	req.on('error', function(err) {
-		complete(err);
-	});
-
-	req.write(body);
-	req.end();
 };
 
-Endpoint.prototype.auth = function(opts, complete) {
+Endpoint.prototype.createConnection = function(options, callback) {
 	var self = this;
 
-	// TODO: secure connection
+	if (options.backendType)
+		self.backendType = options.backendType;
 
-	// Preparing request
-	var data = {
-		passphrase: self.passphrase
-	};
+	if (self.backendType == 'mqtt') {
+		self.backend = new MQTTBackend(self);
+	} else {
+		callback(new Error('No such backend'));
+		return;
+	}
 
-	var body = querystring.stringify(data);
-
-	// Authorize
-	var req = http.request({
-		hostname: self.service.host,
-		port: self.service.port,
-		path: '/apis/endpoint/' + self.id + '/auth',
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Content-Length': body.length
-		}
-	}, function(res) {
-
-		if (res.statusCode != 200) {
-			if (complete)
-				complete(new Error('Failed to verify this endpoint'));
-
+	self.backend.connect(self.id, self.passphrase, options, function(err) {
+		if (err) {
+			callback(err);
 			return;
 		}
 
-		// Getting endpoint information
-		res.setEncoding('utf8');
-		res.on('data', function(chunk) {
-			var info = JSON.parse(chunk);
-			self.collectionId = info._collection;
-
-			if (complete)
-				complete(null, self);
+		// Forward events
+		self.backend.on('connect', function() {
+			self.emit('connect');
 		});
-	});
 
-	req.on('error', function(err) {
-		complete(err);
-	});
+		self.backend.on('close', function() {
+			self.emit('close');
+		});
 
-	req.write(body);
-	req.end();
+		self.backend.on('error', function() {
+			self.emit('error');
+		});
+
+		self.backend.on('message', function(topic, message) {
+			self.emit('message', topic, message);
+		});
+
+		callback(null);
+	});
 };
 
-Endpoint.prototype.createConnection = function() {
+Endpoint.prototype.subscribe = function(topic, options, callback) {
 	var self = this;
 
-	// Create a connection
-	var client = self.client = mqtt.createClient(self.mqtt.port, self.mqtt.host, {
-		clientId: self.id,
-		username: self.id,
-		password: self.passphrase
-	});
+	// Subscribe request (Content type 1 is JSON)
+	self.backend.systemCall('Topic', 1, {
+		cmd: 'SubscribeRequest',
+		topic: topic,
+		secretKey: options.secretKey || undefined
+	}, function(err, message) {
 
-	return client;
+		if (err) {
+			callback(err);
+			return;
+		}
+
+		if (message.status == 403) {
+			callback(new Error('Forbidden'));
+			return;
+		}
+
+		// Success
+		if (message.status == 200) {
+			console.log('Success');
+
+			// Subscribe to topic immediately
+			self.backend.subscribe(topic);
+		}
+
+		callback(null);
+	});
+};
+
+Endpoint.prototype.publish = function(topic, options) {
+	var self = this;
+
+	self.backend.subscribe(topic);
 };
