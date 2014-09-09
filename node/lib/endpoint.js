@@ -120,3 +120,32 @@ Endpoint.prototype.publish = function(topic, options) {
 
 	self.backend.subscribe(topic);
 };
+
+Endpoint.prototype.createTopic = function(topic, options) {
+	var self = this;
+
+	// Subscribe request (Content type 1 is JSON)
+	self.backend.systemCall('Topic', 1, {
+		cmd: 'CreateTopic',
+		topic: topic,
+		secretKey: options.secretKey || undefined
+	}, function(err, message) {
+
+		if (err) {
+			callback(err);
+			return;
+		}
+
+		if (message.status == 403) {
+			callback(new Error('Forbidden'));
+			return;
+		}
+
+		// Success
+		if (message.status == 200) {
+			console.log('Success');
+		}
+
+		callback(null);
+	});
+};
