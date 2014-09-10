@@ -121,7 +121,7 @@ Endpoint.prototype.publish = function(topic, options) {
 	self.backend.subscribe(topic);
 };
 
-Endpoint.prototype.createTopic = function(topic, options) {
+Endpoint.prototype.createTopic = function(topic, options, callback) {
 	var self = this;
 
 	// Subscribe request (Content type 1 is JSON)
@@ -138,6 +138,11 @@ Endpoint.prototype.createTopic = function(topic, options) {
 
 		if (message.status == 403) {
 			callback(new Error('Forbidden'));
+			return;
+		}
+
+		if (message.status == 400) {
+			callback(new Error(message.content));
 			return;
 		}
 
