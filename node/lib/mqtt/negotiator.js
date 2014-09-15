@@ -57,6 +57,14 @@ Negotiator.prototype.handle = function(data, callback) {
 		return;
 	}
 
+	// Validate packet
+	if (!self.validatePacket(msg)) {
+
+		// Ignore this packet
+		callback();
+		return;
+	}
+
 	var id = msg.id;
 
 	// No handler can deal with this message
@@ -68,11 +76,30 @@ Negotiator.prototype.handle = function(data, callback) {
 	self.emit(id, self.parsePacket(msg), callback);
 };
 
+Negotiator.prototype.validatePacket = function(packet) {
+	var self = this;
+
+	if (!packet.id) {
+		return false;
+	}
+
+	if (packet.type == undefined) {
+		return false;
+	}
+
+	return true;
+};
+
 Negotiator.prototype.parsePacket = function(packet) {
 	var self = this;
 
+	// Parsing content with JSON format
 	if (packet.type == self.ContentType.JSON) {
-		packet.content = JSON.parse(packet.content);
+		try {
+			packet.content = JSON.parse(packet.content);
+		} catch(e) {
+			packet.content = {};
+		}
 	}
 
 	return packet;

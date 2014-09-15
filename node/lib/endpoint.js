@@ -127,7 +127,7 @@ Endpoint.prototype.createTopic = function(topic, options, callback) {
 	// Subscribe request (Content type 1 is JSON)
 	self.backend.systemCall('Topic', 1, {
 		cmd: 'CreateTopic',
-		topic: topic,
+		topic: self.collectionId + '/' + self.id + '/' + topic,
 		secretKey: options.secretKey || undefined
 	}, function(err, message) {
 
@@ -152,5 +152,36 @@ Endpoint.prototype.createTopic = function(topic, options, callback) {
 		}
 
 		callback(null);
+	});
+};
+
+Endpoint.prototype.queryTopic = function(endpointId, options, callback) {
+	var self = this;
+
+	// TODO: Support more options
+
+	// Subscribe request (Content type 1 is JSON)
+	self.backend.systemCall('Topic', 1, {
+		cmd: 'QueryTopic',
+		endpointId: endpointId
+	}, function(err, message) {
+
+		if (err) {
+			callback(err);
+			return;
+		}
+
+		if (message.status == 403) {
+			callback(new Error('Forbidden'));
+			return;
+		}
+
+		// Success
+		if (message.status == 200) {
+			console.log('Success');
+
+			// Return topic list
+			callback(null, message.content);
+		}
 	});
 };
