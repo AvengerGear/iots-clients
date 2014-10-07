@@ -1,5 +1,6 @@
 "use strict";
 
+var crypto = require('crypto');
 var events = require('events');
 var util = require('util');
 var mqtt = require('mqtt');
@@ -123,9 +124,13 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 
 			// Handler to deal with command response from server
 			self.negotiator.handle(data, function() {
-
 				self.emit('message', topic, message, pkg);
 			});
+		});
+
+		// TODO: handle error situation
+		self.client.on('error', function() {
+			console.log(arguments);
 		});
 
 		self.client.on('close', function() {
@@ -149,7 +154,12 @@ MQTTBackend.prototype.subscribe = function(topicPath) {
 MQTTBackend.prototype.publish = function(topicPath, packet) {
 	var self = this;
 
+	if (!packet.id)
+		packet.id = Date.now() + crypto.randomBytes(16).toString('hex');
+
 	self.client.publish(topicPath, JSON.stringify(packet));
+
+	return packet.id;
 };
 
 MQTTBackend.prototype.request = function(topicPath, type, data, callback) {

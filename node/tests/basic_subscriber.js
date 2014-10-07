@@ -19,9 +19,14 @@ iot.on('connect', function(endpoint) {
 
 		console.log(topics);
 	});
-/*
-	endpoint.subscribe('e9d3aaa0-2c26-11e4-8117-cf5372daf0f0/hello', {}, function(err) {
+
+	// Subscribe to specific topic
+	endpoint.subscribe('1df1ca90-275b-11e4-bfe6-85f05d846eb4/e9d3aaa0-2c26-11e4-8117-cf5372daf0f0/myTopic', {}, function(err) {
 		console.log(err);
 	});
-*/
+
+});
+
+iot.on('message', function(endpoint, message) {
+	console.log('Received ', message);
 });

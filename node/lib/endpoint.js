@@ -12,6 +12,11 @@ var Endpoint = module.exports = function(id, passphrase) {
 	self.collectionId = null;
 	self.backendType = 'mqtt';
 	self.backend = null;
+	self.ContentType = {
+		Plain: 0,
+		JSON: 1,
+		Binary: 2
+	};
 };
 
 util.inherits(Endpoint, events.EventEmitter);
@@ -83,8 +88,30 @@ Endpoint.prototype.createConnection = function(options, callback) {
 	});
 };
 
-Endpoint.prototype.subscribe = function(topic, options, callback) {
+Endpoint.prototype.subscribe = function() {
 	var self = this;
+
+	var topic = null;
+	var options = null;
+	var callback = null;
+	if (arguments.length == 1) {
+		throw new Error('require two parameters at least');
+	} else if (arguments.length == 2) {
+		topic = arguments[0];
+		callback = arguments[1];
+	} else {
+		topic = arguments[0];
+		options = arguments[1]
+		callback = arguments[2];
+	}
+
+	// No need to check permission and send request if this topic belongs to me
+	var pathObj = topic.split('/');
+	if (pathObj[0] == self.collectionId && pathObj[1] == self.id) {
+		self.backend.subscribe(topic);
+		callback(null);
+		return;
+	}
 
 	// Subscribe request (Content type 1 is JSON)
 	self.backend.systemCall('Topic', 1, {
@@ -115,10 +142,29 @@ Endpoint.prototype.subscribe = function(topic, options, callback) {
 	});
 };
 
-Endpoint.prototype.publish = function(topic, options) {
+Endpoint.prototype.publish = function(topic, options, message) {
 	var self = this;
 
-	self.backend.subscribe(topic);
+	var topic = null;
+	var options = null;
+	var message = null;
+	if (arguments.length == 1) {
+		throw new Error('require two parameters at least');
+	} else if (arguments.length == 2) {
+		topic = arguments[0];
+		options = {};
+		message = arguments[1];
+	} else {
+		topic = arguments[0];
+		options = arguments[1]
+		message = arguments[2];
+	}
+
+	return self.backend.publish(topic, {
+		type: options.contentType || self.ContentType.Plain,
+		source: self.collectionId + '/' + self.id,
+		content: message
+	});
 };
 
 Endpoint.prototype.createTopic = function(topic, options, callback) {
