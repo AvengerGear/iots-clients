@@ -15,20 +15,33 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
+
 public class IOTS {
 	private MqttClient client = null;
-	private String endpointId = null;
+	
+	private String mqttUri = null;
+	
 	private String collectionId = null;
+	private String collectionKey = null;
+	private String endpointId = null;
 	private String endpointPassphrase = null;
+	
 	private final String PublicSystemTopic = "00000000-0000-0000-0000-000000000000";
 	private String PrivateSystemTopic = null;
 	private String CollectionTopic = null;
 	private String EndpointTopic = null;
-	MqttConnectOptions connectOptions = new MqttConnectOptions();
 	
 	private Random random = new Random();
 	private IOTSMessageComposer composer = new IOTSMessageComposer();
     MemoryPersistence persistence = new MemoryPersistence();
+    
+	private Context context = null;
+	private SQLiteDatabase endpointDatabase = null;
 	
 	private enum SystemCallAPI {
 		TOPIC("$API/Topic"), ENDPOINT("$API/Endpoint");
@@ -74,11 +87,13 @@ public class IOTS {
 	};
 
 	private class IOTSInternalCallback implements MqttCallback {
-		private HashMap<String, IOTSMessageCallback> messageCallbacks = new HashMap<String, IOTSMessageCallback>();
+		private HashMap<String, IOTSMessageCallback> idCallbacks = new HashMap<String, IOTSMessageCallback>();
+		private HashMap<String, IOTSMessageCallback> topicCallbacks = new HashMap<String, IOTSMessageCallback>();
+		IOTSMessageCallback defaultCallback = null;
 		
 		@Override
 		public void connectionLost(Throwable cause) {
-			// IOTS.this.connectionLost();
+			// TODO: IOTS.this.connectionLost();
 		}
 
 		@Override
@@ -122,105 +137,157 @@ public class IOTS {
 				content = (JSONObject) new JSONTokener ((String) content).nextValue();
 			}
 			
-			if (id != null && (callback = messageCallbacks.get(id)) != null) {
+			boolean hasCallback =
+					(id != null && (callback = this.idCallbacks.get(id)) != null) ||
+					((callback = this.topicCallbacks.get(topic)) != null) ||
+					((callback = this.defaultCallback) != null);
+			
+			if (hasCallback && callback != null) {
 				callback.onMessage(topic, id, source, type, content);
 			}
-			
-			// TODO: Topic Routing
-			// TODO: Default Routing
 		}
 		
-		public void addMessageCallback(String threadId, IOTSMessageCallback callback) {
-			messageCallbacks.put(threadId, callback);
+		public void addIdCallback(String id, IOTSMessageCallback callback) {
+			idCallbacks.put(id, callback);
 		}
 		
-		public void removeMessageCallback(String id) {
-			messageCallbacks.remove(id);
+		public void removeIdCallback(String id) {
+			idCallbacks.remove(id);
+		}
+		
+		public void addTopicCallback(String topic, IOTSMessageCallback callback) {
+			topicCallbacks.put(topic, callback);
+		}
+		
+		public void removeTopicCallback(String topic) {
+			topicCallbacks.remove(topic);
 		}
 
+		public void setDefaultCallback(IOTSMessageCallback callback) {
+			this.defaultCallback = callback;
+		}
 	}
 	
 	private IOTSInternalCallback callback = null;
 
-	
-	/* CONSTRUCTORS */
-
-	private void init(String endpointId, String passphrase, String uri) throws MqttException{
-		this.client = new MqttClient(uri, endpointId, persistence);
+	public IOTS(Context context, String collectionId, String collectionKey, String uri) throws MqttException{
+		this.mqttUri = uri;
+		this.collectionId = collectionId;
+		this.collectionKey = collectionKey;
+		this.context = context;
 		this.callback = new IOTSInternalCallback();
-		this.endpointId = endpointId;
-		this.endpointPassphrase = passphrase;
-		this.PrivateSystemTopic = "private/" + this.endpointId; // TODO: change this to random id.
-		
-		this.connectOptions = new MqttConnectOptions();
-		this.connectOptions.setCleanSession(true);
-		this.connectOptions.setUserName(this.endpointId);
-		this.connectOptions.setPassword(this.endpointPassphrase.toCharArray());
+		this.getEndpoint();
 	}
 	
-	public IOTS(String endpointId, String passphrase, boolean ssl) throws MqttException{
-		String uri = null;
-		if (ssl) {
-			uri = "ssl://iots.io:1883";
+	public IOTS(Context context, String collectionId, String collectionKey) throws MqttException{
+		this(context, collectionId, collectionKey, "ssl://iots.io:1883");
+	}
+	
+	private void getEndpoint() throws MqttException{
+		this.endpointDatabase = new IOTSEndpointDatabaseOpenHelper(context).getWritableDatabase();
+		Cursor cursor = this.endpointDatabase.query(
+				/* from */ "endpoints", /* select */ new String[]{"endpoint", "passphrase"},
+				/* where */ "collection=?", new String[]{this.collectionId},
+				null, null, null, /* limit */ "1");
+		if (cursor.getCount() == 0){
+			this.registerEndpoint();
 		} else {
-			uri = "tcp://iots.io:1883";
+			cursor.moveToFirst();
+			this.endpointId = cursor.getString(0);
+			this.endpointPassphrase = cursor.getString(1);
 		}
-		init(endpointId, passphrase, uri);
-	}
-	
-	public IOTS(String endpointId, String passphrase, String uri) throws MqttException{
-		init(endpointId, passphrase, uri);
+		this.endpointDatabase.close();
+		this.PrivateSystemTopic = "private/" + this.endpointId;
 	}
 
-	public IOTS(String endpointId, String passphrase) throws MqttException{
-		this(endpointId, passphrase, true);
-	}
-
-	public IOTS(String endpointId, boolean ssl) throws MqttException{
-		this(endpointId, null, true);
-	}
-	
-	public IOTS(String endpointId) throws MqttException{
-		this(endpointId, true);
-	}
-	
-	public String createMessageThread(IOTSMessageCallback callback){
-		String threadId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
-		this.callback.addMessageCallback(threadId, callback);
-		return threadId;
-	}
-	
-	public void removeMessageThread(String threadId){
-		this.callback.removeMessageCallback(threadId);
-	}
-	
-	public void connect() throws MqttException{
-		this.client.connect(this.connectOptions);
+	private void registerEndpoint() throws MqttException{
+		Log.v("IOTS", "Registering endpoint.");
+		MqttConnectOptions connectOptions = new MqttConnectOptions();
+		String clientId = MqttClient.generateClientId(); // Generate a client ID.
+		this.client = new MqttClient(this.mqttUri, clientId, persistence);
+		connectOptions.setCleanSession(true);
+		connectOptions.setUserName("collection://"+this.collectionId);
+		connectOptions.setPassword(this.collectionKey.toCharArray());
+		this.client.connect(connectOptions);
 		this.client.setCallback(this.callback);
-		this.client.subscribe(this.PublicSystemTopic, 0);
+		this.PrivateSystemTopic = "private/" + clientId;
 		this.client.subscribe(this.PrivateSystemTopic, 0);
-		
-		JSONObject authParams = null;
-		try {
-			authParams = new JSONObject().put("cmd", "Auth");
-			if (this.endpointPassphrase != null) {
-				authParams.put("passphrase", this.endpointPassphrase);
-			}
 
-			this.systemCall(SystemCallAPI.ENDPOINT, authParams, new IOTSMessageCallback() {
+		try {
+			JSONObject registerParams = new JSONObject().put("cmd", "Register");
+			registerParams.put("collectionId", this.collectionId);
+			registerParams.put("accessKey", this.collectionKey);
+
+			this.systemCall(SystemCallAPI.ENDPOINT, registerParams, new IOTSMessageCallback() {
 				@Override
 				public void onMessage(String topic, String id, String source, ContentType type, Object content) {
 					// Assume that the content is JSONObject.
 					try {
 						JSONObject parsedMessage = (JSONObject) content;
+						String endpointId = parsedMessage.getString("endpointId");
+						String endpointPassphrase = parsedMessage.getString("passphrase");
+						IOTS.this.endpointId = endpointId;
+						IOTS.this.endpointPassphrase = endpointPassphrase;
+						synchronized(IOTS.this) {
+							IOTS.this.notifyAll(); // Notify the main IOTS thread.
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			});
+
+			synchronized(this) {
+				this.wait(10000); // Wait for reply.
+			}
+
+			IOTS.this.client.disconnect();
+			IOTS.this.client.close();
+			
+			Log.v("IOTS", "Endpoint registered: " + endpointId);
+			
+			ContentValues values = new ContentValues();
+			values.put("collection", IOTS.this.collectionId);
+			values.put("endpoint", endpointId);
+			values.put("passphrase", endpointPassphrase);
+			IOTS.this.endpointDatabase.insertOrThrow("endpoints", null, values);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void connect() throws MqttException{
+		this.client = new MqttClient(this.mqttUri, this.endpointId, this.persistence);
+		MqttConnectOptions connectOptions = new MqttConnectOptions();
+		connectOptions.setCleanSession(true);
+		connectOptions.setUserName(this.endpointId);
+		connectOptions.setPassword(this.endpointPassphrase.toCharArray());
+		this.client.connect(connectOptions);
+		this.client.setCallback(this.callback);
+		this.client.subscribe(this.PublicSystemTopic, 0);
+		this.client.subscribe(this.PrivateSystemTopic, 0);
+		
+		try {
+			Log.v("IOTS", "Authenticating endpoint: " + this.endpointId);
+			JSONObject authParams = new JSONObject().put("cmd", "Auth");
+			if (this.endpointPassphrase != null) {
+				authParams.put("passphrase", this.endpointPassphrase);
+			}
+			
+			this.systemCall(SystemCallAPI.ENDPOINT, authParams, new IOTSMessageCallback() {
+				@Override
+				public void onMessage(String topic, String id, String source, ContentType type, Object content) {
+					// Assume that the content is JSONObject.
+					try {
+						Log.v("IOTS", "Endpoint authenticated");
+						JSONObject parsedMessage = (JSONObject) content;
 						IOTS.this.collectionId = parsedMessage.getString("_collection");
 						IOTS.this.CollectionTopic = IOTS.this.collectionId;
 						IOTS.this.EndpointTopic = IOTS.this.collectionId + "/" + IOTS.this.endpointId;
 						synchronized(IOTS.this) {
-							IOTS.this.notify(); // Notify the main IOTS thread.
+							IOTS.this.notifyAll(); // Notify the main IOTS thread.
 						}
-						IOTS.this.subscribe(IOTS.this.CollectionTopic);
-						IOTS.this.subscribe(IOTS.this.EndpointTopic);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -230,6 +297,9 @@ public class IOTS {
 			synchronized(this) {
 				this.wait(10000); // Wait for reply.
 			}
+			
+			this.subscribe(IOTS.this.CollectionTopic);
+			this.subscribe(IOTS.this.EndpointTopic);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -251,29 +321,29 @@ public class IOTS {
 		this.client.unsubscribe(topic);
 	}
 	
-	public void publish(String topic, Object content) {
-		String messageId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
-		this.publish(topic, content, messageId);
-	}
-	
 	public void publish(String topic, Object content, String messageId) {
 		MqttMessage message;
 		try {
-			String payload = composer.compose(messageId, this.PrivateSystemTopic, content);
+			String payload = composer.compose(messageId, this.PrivateSystemTopic, content); // TODO change Private System Topic
 			message = new MqttMessage(payload.getBytes());
 			this.client.publish(topic, message);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
+	public void publish(String topic, Object content) {
+		this.publish(topic, content, null);
+	}
+
 	public void request(String topic, Object content, final IOTSMessageCallback callback) {
-		String threadId = this.createMessageThread(new IOTSMessageCallback(){
+		String threadId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
+		this.callback.addIdCallback(threadId, new IOTSMessageCallback(){
 			@Override
 			public void onMessage(String topic, String threadId, String source,
 					ContentType type, Object content) {
 				callback.onMessage(topic, threadId, source, type, content);
-				IOTS.this.removeMessageThread(threadId);
+				IOTS.this.callback.removeIdCallback(threadId);
 			}
 		});
 		this.publish(topic, content, threadId);
@@ -289,5 +359,37 @@ public class IOTS {
 
 	public String getCollectionId() {
 		return collectionId;
+	}
+	
+	public String getEndpointTopic() {
+		return this.EndpointTopic;
+	}
+	
+	public String getCollectionTopic() {
+		return this.CollectionTopic;
+	}
+	
+	public void addTopicCallback(String topic, IOTSMessageCallback callback) {
+		this.callback.addTopicCallback(topic, callback);
+	}
+	
+	public void removeTopicCallback(String topic) {
+		this.callback.removeTopicCallback(topic);
+	}
+
+	public void setDefaultCallback(IOTSMessageCallback callback) {
+		this.callback.setDefaultCallback(callback);
+	}
+	
+	public void close() throws MqttException {
+		this.client.disconnect();
+		this.client.close();
+	}
+	
+	public boolean deleteEndpoint() {
+		this.endpointDatabase = new IOTSEndpointDatabaseOpenHelper(context).getWritableDatabase();
+		int count = this.endpointDatabase.delete("endpoints", "collection=?", new String[]{this.collectionId});
+		this.endpointDatabase.close();
+		return count > 0;
 	}
 }

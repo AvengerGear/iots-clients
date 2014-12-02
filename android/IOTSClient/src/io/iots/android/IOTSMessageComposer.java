@@ -14,14 +14,19 @@ public class IOTSMessageComposer {
 		} else {
 			contentString = (String) content;
 		}
-		String result = new JSONStringer()
-			.object()
-				.key("type").value(IOTS.ContentType.getType(content).toInt())
-				.key("id").value(messageId)
-				.key("source").value(source)
-				.key("content").value(contentString)
-			.endObject()
-			.toString();
-		return result;
+
+		JSONStringer object = new JSONStringer();
+		
+		object.object(); /* begin encoding an object */
+		
+		if (messageId != null) {
+			object.key("id").value(messageId);
+		}
+		object.key("type").value(IOTS.ContentType.getType(content).toInt());
+		object.key("source").value(source);
+		object.key("content").value(contentString);
+		object.endObject();
+		
+		return object.toString();
 	}
 }

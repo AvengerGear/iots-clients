@@ -15,60 +15,34 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		try {
 			this.setUp();
-			//this.testConnect();
-			this.testConnectWithPassphrase();
-			//this.testSubscribe();
-			//this.testPublish();
+			this.testConnect();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		Log.d("IOTSClientTestApp", "Test completed.");
 	}
-	
 	private String serverUri;
-	private String endpointWithoutPassphrase;
-	private String endpointWithPassphrase;
-	private String collection;
-	private String passphrase;
+	private String collectionId;
+	private String collectionKey;
 	private final String TEST_CONF_FILE = "test.properties";
 	
 	public void setUp() throws Exception {
 		Properties props = new Properties();
 		props.load(this.getResources().getAssets().open(TEST_CONF_FILE));
 		serverUri = props.getProperty("serverUri");
-		endpointWithoutPassphrase = props.getProperty("endpointWithoutPassphrase");
-		endpointWithPassphrase = props.getProperty("endpointWithPassphrase");
-		collection = props.getProperty("collection");
-		passphrase = props.getProperty("passphrase");
+		collectionId = props.getProperty("collectionId");
+		collectionKey = props.getProperty("collectionKey");
 	}
 	
 	public void testConnect() throws Exception {
-		final IOTS iots = new IOTS(endpointWithoutPassphrase, null, serverUri);
-		iots.connect();
-		if(iots.getCollectionId().equals(MainActivity.this.collection)){
-			Log.e("IOTSClientTestApp", "testConnect: success.");
-		} else {
-			Log.e("IOTSClientTestApp", "testConnect: CollectionId does not match.");
+		final IOTS iots = new IOTS(this.getApplicationContext(), collectionId, collectionKey, serverUri);
+		try{
+			iots.connect();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-	}
-
-	public void testConnectWithPassphrase() throws Exception {
-		final IOTS iots = new IOTS(endpointWithPassphrase, passphrase, serverUri);
-		iots.connect();
-		if(iots.getCollectionId().equals(MainActivity.this.collection)){
-			Log.e("IOTSClientTestApp", "testConnectWithPassphrase: success.");
-		} else {
-			Log.e("IOTSClientTestApp", "testConnectWithPassphrase: CollectionId does not match.");
-		}
-	}
-	
-	public void testSubscribe () throws Exception {
-	}
-	
-	public void testPublish () throws Exception {
-	}
-	
-	public void testCreateTopic() throws Exception {
+		iots.close();
+		iots.deleteEndpoint();
 	}
 }
