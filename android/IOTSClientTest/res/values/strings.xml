@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">IOTSClientTest</string>
+    <string name="hello_world">Please refer to logcat for test results.\n No UI is implemented.</string>
+
+</resources>
