@@ -22,7 +22,7 @@ public class IOTSMessageComposer {
 		if (messageId != null) {
 			object.key("id").value(messageId);
 		}
-		object.key("type").value(IOTS.ContentType.getType(content).toInt());
+		object.key("type").value(ContentType.getType(content).toInt());
 		object.key("source").value(source);
 		object.key("content").value(contentString);
 		object.endObject();

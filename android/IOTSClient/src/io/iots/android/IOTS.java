@@ -56,36 +56,6 @@ public class IOTS {
 		}
 	};
 
-	public enum ContentType {
-		PLAIN(0), JSON(1), BINARY(2);
-		
-		int type;
-		
-		ContentType (final int type) {
-			this.type = type;
-		}
-		
-		public int toInt(){
-			return this.type;
-		}
-		
-		static ContentType getType(Object obj) {
-			if (obj instanceof JSONObject) {
-				return JSON;
-			}
-			if (obj instanceof String) {
-				return PLAIN;
-			}
-			return BINARY;
-		}
-		
-		static ContentType parseType(int ord) {
-			return CONTENT_TYPE_INDEXED[ord];
-		}
-		
-		static final ContentType CONTENT_TYPE_INDEXED[] = {PLAIN, JSON, BINARY};
-	};
-
 	private class IOTSInternalCallback implements MqttCallback {
 		private HashMap<String, IOTSMessageCallback> idCallbacks = new HashMap<String, IOTSMessageCallback>();
 		private HashMap<String, IOTSMessageCallback> topicCallbacks = new HashMap<String, IOTSMessageCallback>();
@@ -103,8 +73,10 @@ public class IOTS {
 
 		@Override
 		public void messageArrived(String topic, MqttMessage message) throws Exception {
+			Log.v("IOTS Received", new String(message.getPayload(), "UTF-8"));
 			JSONObject parsedMessage = (JSONObject) new JSONTokener (new String(message.getPayload(), "UTF-8")).nextValue();
 			String id, source;
+			int status = 0;
 			Object content;
 			ContentType type = null;
 			IOTSMessageCallback callback = null;
@@ -133,6 +105,12 @@ public class IOTS {
 				type = null;
 			}
 			
+			try {
+				status = parsedMessage.getInt("status");
+			} catch (JSONException e) {
+				status = 0;
+			}
+			
 			if (type == ContentType.JSON && content instanceof String) {
 				content = (JSONObject) new JSONTokener ((String) content).nextValue();
 			}
@@ -143,7 +121,7 @@ public class IOTS {
 					((callback = this.defaultCallback) != null);
 			
 			if (hasCallback && callback != null) {
-				callback.onMessage(topic, id, source, type, content);
+				callback.onMessage(topic, id, source, type, content, status);
 			}
 		}
 		
@@ -174,6 +152,7 @@ public class IOTS {
 		this.mqttUri = uri;
 		this.collectionId = collectionId;
 		this.collectionKey = collectionKey;
+		this.CollectionTopic = this.collectionId;
 		this.context = context;
 		this.callback = new IOTSInternalCallback();
 		this.getEndpoint();
@@ -198,6 +177,7 @@ public class IOTS {
 		}
 		this.endpointDatabase.close();
 		this.PrivateSystemTopic = "private/" + this.endpointId;
+		this.EndpointTopic = this.collectionId + "/" + IOTS.this.endpointId;
 	}
 
 	private void registerEndpoint() throws MqttException{
@@ -220,7 +200,7 @@ public class IOTS {
 
 			this.systemCall(SystemCallAPI.ENDPOINT, registerParams, new IOTSMessageCallback() {
 				@Override
-				public void onMessage(String topic, String id, String source, ContentType type, Object content) {
+				public void onMessage(String topic, String id, String source, ContentType type, Object content, int status) {
 					// Assume that the content is JSONObject.
 					try {
 						JSONObject parsedMessage = (JSONObject) content;
@@ -277,14 +257,12 @@ public class IOTS {
 			
 			this.systemCall(SystemCallAPI.ENDPOINT, authParams, new IOTSMessageCallback() {
 				@Override
-				public void onMessage(String topic, String id, String source, ContentType type, Object content) {
+				public void onMessage(String topic, String id, String source, ContentType type, Object content, int status) {
 					// Assume that the content is JSONObject.
 					try {
 						Log.v("IOTS", "Endpoint authenticated");
 						JSONObject parsedMessage = (JSONObject) content;
 						IOTS.this.collectionId = parsedMessage.getString("_collection");
-						IOTS.this.CollectionTopic = IOTS.this.collectionId;
-						IOTS.this.EndpointTopic = IOTS.this.collectionId + "/" + IOTS.this.endpointId;
 						synchronized(IOTS.this) {
 							IOTS.this.notifyAll(); // Notify the main IOTS thread.
 						}
@@ -308,13 +286,114 @@ public class IOTS {
 	public void disconnect() throws org.eclipse.paho.client.mqttv3.MqttException{
 		client.disconnect();
 	}
-	
-	public void createTopic(String topic) {
-		// TODO
+
+	public IOTSTopic createTopic(String path, boolean restricted, boolean allowSameCollection, boolean hasAccessKey, boolean allowPublish) throws IOTSException {
+		if (path == null || path == "") {
+			throw new IOTSException("Topic path cannot be empty.");
+		}
+		
+		final IOTSTopic topic = new IOTSTopic();
+		
+		final int[] resultStatus = {0};
+		
+		try{
+			Log.v("IOTS", "Creating topic: " + path);
+			JSONObject params = new JSONObject()
+				.put("cmd", "CreateTopic")
+				.put("topic", path)
+				.put("restriction_mode", restricted)
+				.put("restriction_type", allowPublish ? 0 : 1); // restriction_type: 1 -> subscription only
+
+			if (restricted) {
+				params.put("group_accessible", allowSameCollection)
+					.put("accessKey", hasAccessKey);
+			}
+			
+			this.systemCall(SystemCallAPI.TOPIC, params, new IOTSMessageCallback() {
+				@Override
+				public void onMessage(String _topic, String id, String source, ContentType type, Object content, int status) {					
+					resultStatus[0] = status;
+
+					if (status == 200) {
+						Log.v("IOTS", "Topic created");
+						topic.readFromJSON((JSONObject) content);
+					}
+
+					synchronized(IOTS.this) {
+						IOTS.this.notifyAll(); // Notify the main IOTS thread.
+					}
+				}
+			});
+			
+			synchronized(this) {
+				this.wait(10000); // Wait for reply.
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if (resultStatus[0] == 400) {
+			throw new IOTSException("Topic exists already", 400);
+		}
+		
+		if (resultStatus[0] == 403) {
+			throw new IOTSException("No permission to create a topic", 403);
+		}
+		
+		return topic;
 	}
 	
-	public void subscribe(String topic) throws MqttException {
-		this.client.subscribe(topic, 0);
+	public IOTSTopic createTopic(String path) throws IOTSException {
+		return this.createTopic(path, true, true, false, true);
+	}
+	
+	public void subscribe(String path, String accessKey) throws MqttException, IOTSException {
+		if (path == null || path == "") {
+			throw new IOTSException("Topic path cannot be empty.", 400);
+		}
+		
+		final int[] resultStatus = {0};
+		
+		try{
+			Log.v("IOTS", "Subscribing topic: " + path);
+			JSONObject params = new JSONObject()
+				.put("cmd", "SubscribeRequest")
+				.put("topic", path);
+			if (accessKey != null) {
+				params.put("secretKey", accessKey);
+			}
+
+			this.systemCall(SystemCallAPI.TOPIC, params, new IOTSMessageCallback() {
+				@Override
+				public void onMessage(String _topic, String id, String source, ContentType type, Object content, int status) {
+					resultStatus[0] = status;
+					synchronized(IOTS.this) {
+						IOTS.this.notifyAll(); // Notify the main IOTS thread.
+					}
+				}
+			});
+			
+			synchronized(this) {
+				this.wait(10000); // Wait for reply.
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if (resultStatus[0] == 403) {
+			throw new IOTSException("The topic is forbidden to subscribe", 403);
+		}
+		
+		if (resultStatus[0] == 404) {
+			throw new IOTSException("Topic not found", 404);
+		}
+		this.client.subscribe(path, 0);
+	}
+	
+	public void subscribe(String path) throws MqttException, IOTSException {
+		this.subscribe(path, null);
 	}
 	
 	public void unsubscribe(String topic) throws MqttException {
@@ -324,7 +403,8 @@ public class IOTS {
 	public void publish(String topic, Object content, String messageId) {
 		MqttMessage message;
 		try {
-			String payload = composer.compose(messageId, this.PrivateSystemTopic, content); // TODO change Private System Topic
+			String payload = composer.compose(messageId, this.PrivateSystemTopic, content);
+			Log.v("IOTS Publish", payload);
 			message = new MqttMessage(payload.getBytes());
 			this.client.publish(topic, message);
 		} catch (Exception e) {
@@ -340,9 +420,8 @@ public class IOTS {
 		String threadId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
 		this.callback.addIdCallback(threadId, new IOTSMessageCallback(){
 			@Override
-			public void onMessage(String topic, String threadId, String source,
-					ContentType type, Object content) {
-				callback.onMessage(topic, threadId, source, type, content);
+			public void onMessage(String topic, String threadId, String source,	ContentType type, Object content, int status) {
+				callback.onMessage(topic, threadId, source, type, content, status);
 				IOTS.this.callback.removeIdCallback(threadId);
 			}
 		});
