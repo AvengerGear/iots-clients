@@ -148,7 +148,7 @@ public class IOTS {
 	
 	private IOTSInternalCallback callback = null;
 
-	public IOTS(Context context, String collectionId, String collectionKey, String uri) throws MqttException{
+	public IOTS(Context context, String collectionId, String collectionKey, String uri) throws MqttException, IOTSException{
 		this.mqttUri = uri;
 		this.collectionId = collectionId;
 		this.collectionKey = collectionKey;
@@ -158,11 +158,11 @@ public class IOTS {
 		this.getEndpoint();
 	}
 	
-	public IOTS(Context context, String collectionId, String collectionKey) throws MqttException{
+	public IOTS(Context context, String collectionId, String collectionKey) throws MqttException, IOTSException{
 		this(context, collectionId, collectionKey, "ssl://iots.io:1883");
 	}
 	
-	private void getEndpoint() throws MqttException{
+	private void getEndpoint() throws MqttException, IOTSException{
 		this.endpointDatabase = new IOTSEndpointDatabaseOpenHelper(context).getWritableDatabase();
 		Cursor cursor = this.endpointDatabase.query(
 				/* from */ "endpoints", /* select */ new String[]{"endpoint", "passphrase"},
@@ -180,7 +180,7 @@ public class IOTS {
 		this.EndpointTopic = this.collectionId + "/" + IOTS.this.endpointId;
 	}
 
-	private void registerEndpoint() throws MqttException{
+	private void registerEndpoint() throws MqttException, IOTSException{
 		Log.v("IOTS", "Registering endpoint.");
 		MqttConnectOptions connectOptions = new MqttConnectOptions();
 		String clientId = MqttClient.generateClientId(); // Generate a client ID.
@@ -223,18 +223,23 @@ public class IOTS {
 
 			IOTS.this.client.disconnect();
 			IOTS.this.client.close();
-			
-			Log.v("IOTS", "Endpoint registered: " + endpointId);
-			
-			ContentValues values = new ContentValues();
-			values.put("collection", IOTS.this.collectionId);
-			values.put("endpoint", endpointId);
-			values.put("passphrase", endpointPassphrase);
-			IOTS.this.endpointDatabase.insertOrThrow("endpoints", null, values);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	
+		if (endpointId == null) {
+			throw new IOTSException("Timed out when registering endpoint.");
+		}
+		
+		Log.v("IOTS", "Endpoint registered: " + endpointId);
+		
+		ContentValues values = new ContentValues();
+		values.put("collection", IOTS.this.collectionId);
+		values.put("endpoint", endpointId);
+		values.put("passphrase", endpointPassphrase);
+		IOTS.this.endpointDatabase.insertOrThrow("endpoints", null, values);
+
 	}
 	
 	public void connect() throws MqttException{
