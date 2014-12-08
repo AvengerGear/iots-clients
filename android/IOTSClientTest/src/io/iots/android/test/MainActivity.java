@@ -10,6 +10,7 @@ import io.iots.android.IOTSMessageCallback;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 
 public class MainActivity extends Activity {
 
@@ -42,24 +43,29 @@ public class MainActivity extends Activity {
 	
 	public void testConnect() throws Exception {
 		iots = new IOTS(this.getApplicationContext(), collectionId, collectionKey, serverUri);
-		try{
-			iots.connect();
-			iots.createTopic(iots.getEndpointTopic() + "/testTopic");
-			iots.addTopicCallback(iots.getEndpointTopic() + "/testTopic", new IOTSMessageCallback(){
-				@Override
-				public void onMessage(String topic, String threadId,
-						String source, ContentType type, Object content,
-						int status) {
-					Log.d("IOTSTest", "Message Received:" + content.toString());
-				}
-			});
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		iots.connect();
+		iots.createTopic(iots.getEndpointTopic() + "/testTopic");
+		iots.subscribe(iots.getEndpointTopic() + "/testTopic");
+		iots.addTopicCallback(iots.getEndpointTopic() + "/testTopic", new IOTSMessageCallback(){
+			@Override
+			public void onMessage(String topic, String threadId,
+					String source, ContentType type, Object content,
+					int status) {
+				Log.d("IOTSTest", "Message Received:" + content.toString());
+			}
+		});
 	}
 	
 	@Override
-	public void onDestroy(){
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if ((keyCode == KeyEvent.KEYCODE_BACK)) {
+			finish();
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+
+	@Override
+	public void finish() {
 		try {
 			iots.close();
 		} catch (MqttException e) {
@@ -67,5 +73,6 @@ public class MainActivity extends Activity {
 			e.printStackTrace();
 		}
 		iots.deleteEndpoint();
+		super.finish();
 	}
 }
