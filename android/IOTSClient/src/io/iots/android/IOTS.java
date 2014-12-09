@@ -147,6 +147,16 @@ public class IOTS {
 	
 	private IOTSInternalCallback callback = null;
 
+	/**
+	 * IOTS Class Constructor. This will register an endpoint if there's no known endpoint in the database.
+	 * @param context  The application or activity context from Android
+	 * @param collectionId  The collection ID from IOTS server
+	 * @param collectionKey  The collection key from IOTS server
+	 * @param uri  The service URI you connect to
+	 * @throws MqttException
+	 * @throws IOTSException
+	 * @see #IOTS(Context, String, String)
+	 */
 	public IOTS(Context context, String collectionId, String collectionKey, String uri) throws MqttException, IOTSException{
 		this.mqttUri = uri;
 		this.collectionId = collectionId;
@@ -156,7 +166,17 @@ public class IOTS {
 		this.callback = new IOTSInternalCallback();
 		this.getEndpoint();
 	}
-	
+
+	/**
+	 * IOTS Class Constructor. This will register an endpoint if there's no known endpoint in the database.
+	 * This will also connect to iots.io via SSL by default.
+	 * @param context  The application or activity context from Android
+	 * @param collectionId  The collection ID from IOTS server
+	 * @param collectionKey  The collection key from IOTS server
+	 * @throws MqttException
+	 * @throws IOTSException
+	 * @see #IOTS(Context, String, String, String)
+	 */
 	public IOTS(Context context, String collectionId, String collectionKey) throws MqttException, IOTSException{
 		this(context, collectionId, collectionKey, "ssl://iots.io:1883");
 	}
@@ -241,6 +261,12 @@ public class IOTS {
 
 	}
 	
+	/**
+	 * Connect to IOTS server.
+	 * @throws MqttException
+	 * @see #close()
+	 * @see #disconnect()
+	 */
 	public void connect() throws MqttException{
 		this.client = new MqttClient(this.mqttUri, this.endpointId, this.persistence);
 		MqttConnectOptions connectOptions = new MqttConnectOptions();
@@ -287,10 +313,27 @@ public class IOTS {
 		}
 	}
 
+	/**
+	 * Disconnect from IOTS server.
+	 * @throws MqttException
+	 * @see #close()
+	 * @see #disconnect()
+	 */
 	public void disconnect() throws org.eclipse.paho.client.mqttv3.MqttException{
 		client.disconnect();
 	}
 
+	/**
+	 * Create a topic under the endpoint.
+	 * @param path  Topic path; it should be in the format of "[collection ID]/[endpoint ID]/[topic ID]"
+	 * @param restricted  Set to true if the topic has restricted access using the parameters below
+	 * @param allowSameCollection  Allow the same collection accessing the endpoint
+	 * @param hasAccessKey  Create the topic with access key
+	 * @param allowPublish  Allow other endpoints to publish in this topic
+	 * @return topic object; the key will be included if hasAccessKey has set to true
+	 * @throws IOTSException
+	 * @see #createTopic(String)
+	 */
 	public IOTSTopic createTopic(String path, boolean restricted, boolean allowSameCollection, boolean hasAccessKey, boolean allowPublish) throws IOTSException {
 		if (path == null || path == "") {
 			throw new IOTSException("Topic path cannot be empty.");
@@ -348,10 +391,31 @@ public class IOTS {
 		return topic;
 	}
 	
+	/**
+	 * Shorthand for {@link #createTopic(String, boolean, boolean, boolean, boolean)} with default parameters:
+	 * <ul>
+	 * <li>Restricted to endpoints of same collection
+	 * <li>No access key is created
+	 * <li>Allow other endpoints to publish
+	 * </ul>
+	 * @param path  Topic path; it should be in the format of "[collection ID]/[endpoint ID]/[topic ID]"
+	 * @return topic object
+	 * @throws IOTSException
+	 * @see #createTopic(String, boolean, boolean, boolean, boolean)
+	 */
 	public IOTSTopic createTopic(String path) throws IOTSException {
 		return this.createTopic(path, true, true, false, true);
 	}
 	
+	/**
+	 * Subscribe to a topic with access key.
+	 * @param path  Topic path
+	 * @param accessKey  Access key which is generated during the creation of the topic
+	 * @throws MqttException
+	 * @throws IOTSException
+	 * @see #subscribe(String)
+	 * @see #unsubscribe(String)
+	 */
 	public void subscribe(String path, String accessKey) throws MqttException, IOTSException {
 		if (path == null || path == "") {
 			throw new IOTSException("Topic path cannot be empty.", 400);
@@ -395,11 +459,27 @@ public class IOTS {
 		}
 		this.client.subscribe(path, 0);
 	}
-	
+
+	/**
+	 * Subscribe to a topic.
+	 * @param topic - Topic path
+	 * @throws MqttException
+	 * @throws IOTSException
+	 * @see #subscribe(String, String)
+	 * @see #unsubscribe(String)
+	 */
 	public void subscribe(String topic) throws MqttException, IOTSException {
 		this.subscribe(topic, null);
 	}
-	
+
+	/**
+	 * Unsubscribe from a topic.
+	 * @param topic - Topic path
+	 * @throws MqttException
+	 * @throws IOTSException
+	 * @see #subscribe(String, String)
+	 * @see #subscribe(String)
+	 */
 	public void unsubscribe(String topic) throws MqttException {
 		this.client.unsubscribe(topic);
 	}
@@ -415,7 +495,12 @@ public class IOTS {
 			e.printStackTrace();
 		}
 	}
-
+	
+	/**
+	 * Publish a message to a topic.
+	 * @param topic  The target topic
+	 * @param content  Content; can be in the format of JSONObject, String or byte[]
+	 */
 	public void publish(String topic, Object content) {
 		this.publish(topic, content, null);
 	}
@@ -436,38 +521,91 @@ public class IOTS {
 		this.request(api.getTopic(), content, callback);
 	}
 
+	/**
+	 * Get current endpoint ID.
+	 * @return Endpoint ID
+	 */
 	public String getEndpointId() {
 		return endpointId;
 	}
 
+	/**
+	 * Get current collection ID.
+	 * @return Collection ID
+	 */
 	public String getCollectionId() {
 		return collectionId;
 	}
 	
+	/**
+	 * Get endpoint topic path.
+	 * @return Endpoint topic path
+	 */
 	public String getEndpointTopic() {
 		return this.EndpointTopic;
 	}
 	
+	/**
+	 * Get collection topic path.
+	 * @return Collection topic path
+	 */
 	public String getCollectionTopic() {
 		return this.CollectionTopic;
 	}
 	
+	/**
+	 * Add a callback of topic. When message arrived within the topic, it will pass to the callback.
+	 * @param topic  The topic path
+	 * @param callback  Callback object
+	 * @see #removeTopicCallback(String)
+	 * @see #setDefaultCallback(IOTSMessageCallback)
+	 */
 	public void addTopicCallback(String topic, IOTSMessageCallback callback) {
 		this.callback.addTopicCallback(topic, callback);
 	}
 	
+	/**
+	 * Remove a callback of topic.
+	 * @param topic  The topic path
+	 * @see #addTopicCallback(String, IOTSMessageCallback)
+	 */
 	public void removeTopicCallback(String topic) {
 		this.callback.removeTopicCallback(topic);
 	}
 
+	/**
+	 * Set default callback. When message arrived without any topic callback, the default callback would be used.
+	 * @param callback  Callback object.
+	 * @see #removeDefaultCallback()
+	 * @see #addTopicCallback(String, IOTSMessageCallback)
+	 */
 	public void setDefaultCallback(IOTSMessageCallback callback) {
 		this.callback.setDefaultCallback(callback);
 	}
 	
+	/**
+	 * Remove default callback.
+	 * @see #setDefaultCallback(IOTSMessageCallback)
+	 */
+	public void removeDefaultCallback() {
+		this.callback.setDefaultCallback(null);
+	}
+
+	/**
+	 * Close the client and release resources.
+	 * @throws MqttException
+	 * @see #disconnect()
+	 */
 	public void close() throws MqttException {
 		this.client.close();
 	}
 	
+	/**
+	 * Delete the endpoint stored in the database.
+	 * @return if the endpoint is deleted.
+	 * @see #IOTS(Context, String, String)
+	 * @see #IOTS(Context, String, String, String)
+	 */
 	public boolean deleteEndpoint() {
 		this.endpointDatabase = new IOTSEndpointDatabaseOpenHelper(context).getWritableDatabase();
 		int count = this.endpointDatabase.delete("endpoints", "collection=?", new String[]{this.collectionId});
