@@ -73,7 +73,6 @@ public class IOTS {
 
 		@Override
 		public void messageArrived(String topic, MqttMessage message) throws Exception {
-			Log.v("IOTS Received", new String(message.getPayload(), "UTF-8"));
 			JSONObject parsedMessage = (JSONObject) new JSONTokener (new String(message.getPayload(), "UTF-8")).nextValue();
 			String id, source;
 			int status = 0;
@@ -404,8 +403,8 @@ public class IOTS {
 	public void unsubscribe(String topic) throws MqttException {
 		this.client.unsubscribe(topic);
 	}
-	
-	public void publish(String topic, Object content, String messageId) {
+
+	private void publish(String topic, Object content, String messageId) {
 		MqttMessage message;
 		try {
 			String payload = composer.compose(messageId, this.PrivateSystemTopic, content);
@@ -421,7 +420,7 @@ public class IOTS {
 		this.publish(topic, content, null);
 	}
 
-	public void request(String topic, Object content, final IOTSMessageCallback callback) {
+	private void request(String topic, Object content, final IOTSMessageCallback callback) {
 		String threadId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
 		this.callback.addIdCallback(threadId, new IOTSMessageCallback(){
 			@Override
