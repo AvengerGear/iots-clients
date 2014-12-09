@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
 	@Override
 	public void finish() {
 		try {
+			iots.disconnect();
 			iots.close();
 		} catch (MqttException e) {
 			// TODO Auto-generated catch block
