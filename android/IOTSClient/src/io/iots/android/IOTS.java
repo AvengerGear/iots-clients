@@ -466,7 +466,6 @@ public class IOTS {
 	}
 	
 	public void close() throws MqttException {
-		this.client.disconnect();
 		this.client.close();
 	}
 	
