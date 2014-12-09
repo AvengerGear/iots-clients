@@ -396,8 +396,8 @@ public class IOTS {
 		this.client.subscribe(path, 0);
 	}
 	
-	public void subscribe(String path) throws MqttException, IOTSException {
-		this.subscribe(path, null);
+	public void subscribe(String topic) throws MqttException, IOTSException {
+		this.subscribe(topic, null);
 	}
 	
 	public void unsubscribe(String topic) throws MqttException {
