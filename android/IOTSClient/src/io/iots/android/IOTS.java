@@ -484,10 +484,15 @@ public class IOTS {
 		this.client.unsubscribe(topic);
 	}
 
-	private void publish(String topic, Object content, String messageId) {
+	/**
+	 * Publish a message to a topic.
+	 * @param topic  The target topic
+	 * @param content  Content; can be in the format of JSONObject, String or byte[]
+	 */
+	public void publish(String topic, Object content) {
 		MqttMessage message;
 		try {
-			String payload = composer.compose(messageId, this.PrivateSystemTopic, content);
+			String payload = composer.compose(null, this.EndpointTopic, content);
 			Log.v("IOTS Publish", payload);
 			message = new MqttMessage(payload.getBytes());
 			this.client.publish(topic, message);
@@ -495,18 +500,11 @@ public class IOTS {
 			e.printStackTrace();
 		}
 	}
-	
-	/**
-	 * Publish a message to a topic.
-	 * @param topic  The target topic
-	 * @param content  Content; can be in the format of JSONObject, String or byte[]
-	 */
-	public void publish(String topic, Object content) {
-		this.publish(topic, content, null);
-	}
 
 	private void request(String topic, Object content, final IOTSMessageCallback callback) {
 		String threadId = System.currentTimeMillis() + new BigInteger(128, random).toString(16);
+		MqttMessage message;
+
 		this.callback.addIdCallback(threadId, new IOTSMessageCallback(){
 			@Override
 			public void onMessage(String topic, String threadId, String source,	ContentType type, Object content, int status) {
@@ -514,7 +512,15 @@ public class IOTS {
 				IOTS.this.callback.removeIdCallback(threadId);
 			}
 		});
-		this.publish(topic, content, threadId);
+		
+		try {
+			String payload = composer.compose(threadId, this.PrivateSystemTopic, content);
+			Log.v("IOTS System Request", payload);
+			message = new MqttMessage(payload.getBytes());
+			this.client.publish(topic, message);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void systemCall(SystemCallAPI api, Object content, IOTSMessageCallback callback){
