@@ -60,7 +60,7 @@ Network.prototype.addEndpoint = function(endpoint) {
 			};
 
 			self.dispatcher.middleware('message', data, function() {
-				self.emit('message', endpoint, JSON.parse(data.message));
+				self.emit('message', endpoint, JSON.parse(data.message), topic);
 			});
 		});
 	});
