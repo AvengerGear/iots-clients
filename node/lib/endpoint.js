@@ -132,8 +132,6 @@ Endpoint.prototype.subscribe = function() {
 
 		// Success
 		if (message.status == 200) {
-			console.log('Success');
-
 			// Subscribe to topic immediately
 			self.backend.subscribe(topic);
 		}
@@ -192,11 +190,6 @@ Endpoint.prototype.createTopic = function(topic, options, callback) {
 			return;
 		}
 
-		// Success
-		if (message.status == 200) {
-			console.log('Success');
-		}
-
 		callback(null);
 	});
 };
@@ -224,8 +217,6 @@ Endpoint.prototype.queryTopic = function(endpointId, options, callback) {
 
 		// Success
 		if (message.status == 200) {
-			console.log('Success');
-
 			// Return topic list
 			callback(null, message.content);
 		}
