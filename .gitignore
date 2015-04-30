@@ -1,3 +1,5 @@
 android/**/bin
 android/**/gen
 android/**/doc
+android/**/.idea
+node/node_modules
