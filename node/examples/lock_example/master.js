@@ -35,7 +35,7 @@ MallockClient.prototype.connect = function() {
 };
 
 MallockClient.prototype.saveConfig = function() {
-	fs.writeFile("./config.json", JSON.stringify(this.config, null, "\t"), function(err){
+	fs.writeFile("./master-config.json", JSON.stringify(this.config, null, "\t"), function(err){
 		if (err){
 			console.error("Error on writing config");
 		}
