@@ -46,14 +46,23 @@ public class MainActivity extends Activity {
 		iots.connect();
 		iots.createTopic(iots.getEndpointTopic() + "/testTopic");
 		iots.subscribe(iots.getEndpointTopic() + "/testTopic");
-		iots.addTopicCallback(iots.getEndpointTopic() + "/testTopic", new IOTSMessageCallback(){
-			@Override
-			public void onMessage(String topic, String threadId,
-					String source, ContentType type, Object content,
-					int status) {
-				Log.d("IOTSTest", "Message Received:" + content.toString());
-			}
-		});
+//		iots.addTopicCallback(iots.getEndpointTopic() + "/testTopic", new IOTSMessageCallback(){
+//			@Override
+//			public void onMessage(String topic, String threadId,
+//					String source, ContentType type, Object content,
+//					int status) {
+//				Log.d("IOTSTest", "Message Received:" + content.toString());
+//			}
+//		});
+		
+		iots.setDefaultCallback(new IOTSMessageCallback(){
+            @Override
+            public void onMessage(String topic, String threadId,
+                                  String source, ContentType type, Object content,
+                                  int status) {
+                Log.d("IOTSTest", "Message Received from " + topic + ":" + content.toString());
+            }
+        });
 	}
 	
 	@Override
