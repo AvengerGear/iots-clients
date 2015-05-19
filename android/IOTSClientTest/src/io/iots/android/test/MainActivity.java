@@ -62,14 +62,16 @@ public class MainActivity extends ListActivity {
 		iots = new IOTS(this.getApplicationContext(), collectionId,
 				collectionKey, serverUri);
 		iots.connect();
-		try {
-			iots.createTopic(iots.getEndpointTopic() + "/testTopic");
-			// TODO : check if the topic with the sane name is already created
-		} catch (IOTSException exception){
-			// TODO : specify a clear error message , or this should be handled by the client side?
-			Toast.makeText(getApplicationContext(), "Welcome Back", 0).show();
-		}
-		iots.subscribe(iots.getEndpointTopic() + "/testTopic");
+		String command = "{\"color\":\"#ff0000\"}";
+		iots.publish(null, command ); 
+//		try {
+//			iots.createTopic(iots.getEndpointTopic() + "/testTopic");
+//			// TODO : check if the topic with the sane name is already created
+//		} catch (IOTSException exception){
+//			// TODO : specify a clear error message , or this should be handled by the client side?
+//			Toast.makeText(getApplicationContext(), "Welcome Back", 0).show();
+//		}
+//		iots.subscribe(iots.getEndpointTopic() + "/testTopic");
 		// iots.addTopicCallback(iots.getEndpointTopic() + "/testTopic", new
 		// IOTSMessageCallback(){
 		// @Override
