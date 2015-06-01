@@ -4,9 +4,11 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Random;
 
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -22,7 +24,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 public class IOTS {
-	private MqttClient client = null;
+	private MqttAsyncClient client = null;
 	
 	private String mqttUri = null;
 	
@@ -202,14 +204,16 @@ public class IOTS {
 	private void registerEndpoint() throws MqttException, IOTSException{
 		Log.v("IOTS", "Registering endpoint.");
 		MqttConnectOptions connectOptions = new MqttConnectOptions();
-		String clientId = MqttClient.generateClientId(); // Generate a client ID.
-		this.client = new MqttClient(this.mqttUri, clientId, persistence);
+		String clientId = MqttAsyncClient.generateClientId(); // Generate a client ID.
+        IMqttToken token;
+		this.client = new MqttAsyncClient(this.mqttUri, clientId, persistence);
 		connectOptions.setCleanSession(true);
 		connectOptions.setUserName("collection://"+this.collectionId);
 		connectOptions.setPassword(this.collectionKey.toCharArray());
-		this.client.connect(connectOptions);
+        token = this.client.connect(connectOptions);
 		this.client.setCallback(this.callback);
 		this.PrivateSystemTopic = "private/" + clientId;
+        token.waitForCompletion();
 		this.client.subscribe(this.PrivateSystemTopic, 0);
 
 		try {
@@ -268,16 +272,20 @@ public class IOTS {
 	 * @see #disconnect()
 	 */
 	public void connect() throws MqttException{
-		this.client = new MqttClient(this.mqttUri, this.endpointId, this.persistence);
+        IMqttToken token;
+		this.client = new MqttAsyncClient(this.mqttUri, this.endpointId, this.persistence);
 		MqttConnectOptions connectOptions = new MqttConnectOptions();
 		connectOptions.setCleanSession(true);
 		connectOptions.setUserName(this.endpointId);
 		connectOptions.setPassword(this.endpointPassphrase.toCharArray());
-		this.client.connect(connectOptions);
+		token = this.client.connect(connectOptions);
+        token.waitForCompletion();
 		this.client.setCallback(this.callback);
-		this.client.subscribe(this.PublicSystemTopic, 0);
-		this.client.subscribe(this.PrivateSystemTopic, 0);
-		
+		token = this.client.subscribe(this.PublicSystemTopic, 0);
+        token.waitForCompletion();
+		token = this.client.subscribe(this.PrivateSystemTopic, 0);
+        token.waitForCompletion();
+
 		try {
 			Log.v("IOTS", "Authenticating endpoint: " + this.endpointId);
 			JSONObject authParams = new JSONObject().put("cmd", "Auth");
@@ -305,8 +313,8 @@ public class IOTS {
 			synchronized(this) {
 				this.wait(10000); // Wait for reply.
 			}
-			
-			this.subscribe(IOTS.this.CollectionTopic);
+
+            this.subscribe(IOTS.this.CollectionTopic);
 			this.subscribe(IOTS.this.EndpointTopic);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -457,8 +465,11 @@ public class IOTS {
 		if (resultStatus[0] == 404) {
 			throw new IOTSException("Topic not found", 404);
 		}
-		this.client.subscribe(path, 0);
-	}
+
+        IMqttToken token;
+		token = this.client.subscribe(path, 0);
+        token.waitForCompletion();
+    }
 
 	/**
 	 * Subscribe to a topic.
@@ -493,9 +504,26 @@ public class IOTS {
 		MqttMessage message;
 		try {
 			String payload = composer.compose(null, this.EndpointTopic, content);
-			Log.v("IOTS Publish", payload);
 			message = new MqttMessage(payload.getBytes());
-			this.client.publish(topic, message);
+			Log.v("IOTS Publish", payload);
+			IMqttDeliveryToken token = this.client.publish(topic, message);
+			token.setActionCallback(new IMqttActionListener(){
+
+				@Override
+				public void onFailure(IMqttToken arg0, Throwable arg1) {
+					Log.v("IOTS Publish", "=====onFailure");					//
+					
+				}
+
+				@Override
+				public void onSuccess(IMqttToken arg0) {
+					Log.v("IOTS Publish", "=====onSuccess");
+					// TODO Auto-generated method stub
+					
+				}});
+			token.waitForCompletion();
+			Log.v("IOTS Publish", "done");
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

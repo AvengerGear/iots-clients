@@ -112,8 +112,30 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 					Log.d("om","type======="+type);
 					Log.d("om","content======="+content);
 					Log.d("om","status======="+status);
-					 
-					Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 0).show();
+					JSONObject msgO;
+					try {
+						msgO = new JSONObject(content.toString());
+						 if (msgO.has("color")){
+							 String color = msgO.getString("color");
+							 Log.w("init","====="+color);
+							 final int c = Color.parseColor(color);
+							 mHandler.post(new Runnable(){
+
+								@Override
+								public void run() {
+									mPicker.setColor(c);
+									findViewById(R.id.bg).setBackgroundColor(c);
+									
+								}
+								 
+							 });
+						 }
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+//					Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 1).show();
 					completed();
 					Log.d("IOTSTest", "Message Received from " + topic + ":"
 							+ content.toString());
@@ -124,44 +146,6 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 			Log.e("nevin","====="+e);
 		}
 		
-//		new Thread(new Runnable(){
-//
-//			@Override
-//			public void run() {
-//				try{
-//					Properties props = new Properties();
-//					props.load(SwitchActivity.this.getResources().getAssets().open(TEST_CONF_FILE));
-//					serverUri = props.getProperty("serverUri");
-//					collectionId = props.getProperty("collectionId");
-//					collectionKey = props.getProperty("collectionKey");
-//					iots = new IOTS(SwitchActivity.this, collectionId,
-//							collectionKey, serverUri);
-//					iots.connect();
-//					iots.subscribe(iots.getEndpointTopic());
-//					iots.setDefaultCallback(new IOTSMessageCallback() {
-//						@Override
-//						public void onMessage(String topic, String threadId, String source,
-//								ContentType type, Object content, int status) {
-//							
-//							Log.w("om","====onMessage====");
-//							Log.d("om","topic======="+topic);
-//							Log.d("om","threadId======="+threadId);
-//							Log.d("om","source======="+source);
-//							Log.d("om","type======="+type);
-//							Log.d("om","content======="+content);
-//							Log.d("om","status======="+status);
-//							 
-//							Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 0).show();
-//							completed();
-//							Log.d("IOTSTest", "Message Received from " + topic + ":"
-//									+ content.toString());
-//						}
-//					});
-//					completed();
-//				}catch (Exception e){
-//					
-//				}
-//			}}).start();
 	}
 
 	public void changeColor(String colorString){
@@ -209,8 +193,21 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 		super.finish();
 	}
 
+	boolean mFirstConnect =true;
 	private void completed() {
-		
+		if (this.mFirstConnect){
+			try {
+				JSONObject cmd = new JSONObject();
+				cmd.put("cmd", "status");
+				iots.publish(collectionId+"/"+"3879f470-fdd7-11e4-bad9-0577ec859bfd", cmd.toString() ); 
+				mFirstConnect = false;
+				return ; 
+			} catch (JSONException e) {
+				
+				e.printStackTrace();
+			}
+			
+		}
 		mHandler.post(new Runnable(){
 
 			@Override
