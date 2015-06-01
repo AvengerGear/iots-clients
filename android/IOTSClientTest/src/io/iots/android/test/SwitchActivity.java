@@ -88,55 +88,85 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 	private IOTS iots;
 
 	public void setUp()  {
-		Utils.showProgressDialog(this, "Connecting...",false);
+		Utils.showProgressDialog(this, "Connecting...",true);
 
-		new Thread(new Runnable(){
-
-			@Override
-			public void run() {
-				try{
-					Properties props = new Properties();
-					props.load(SwitchActivity.this.getResources().getAssets().open(TEST_CONF_FILE));
-					serverUri = props.getProperty("serverUri");
-					collectionId = props.getProperty("collectionId");
-					collectionKey = props.getProperty("collectionKey");
-					iots = new IOTS(SwitchActivity.this, collectionId,
-							collectionKey, serverUri);
-					iots.connect();
-					iots.setDefaultCallback(new IOTSMessageCallback() {
-						@Override
-						public void onMessage(String topic, String threadId, String source,
-								ContentType type, Object content, int status) {
-							
-							Log.w("om","====onMessage====");
-							Log.d("om","topic======="+topic);
-							Log.d("om","threadId======="+threadId);
-							Log.d("om","source======="+source);
-							Log.d("om","type======="+type);
-							Log.d("om","content======="+content);
-							Log.d("om","status======="+status);
-							
-							Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 0).show();
-							completed();
-							Log.d("IOTSTest", "Message Received from " + topic + ":"
-									+ content.toString());
-						}
-					});
-					// query status
-					JSONObject cmd = new JSONObject();
-					cmd.put("cmd", "status");
-					iots.publish(collectionId+"/"+"3879f470-fdd7-11e4-bad9-0577ec859bfd", cmd.toString() );
+		try{
+			Properties props = new Properties();
+			props.load(SwitchActivity.this.getResources().getAssets().open(TEST_CONF_FILE));
+			serverUri = props.getProperty("serverUri");
+			collectionId = props.getProperty("collectionId");
+			collectionKey = props.getProperty("collectionKey");
+			iots = new IOTS(SwitchActivity.this, collectionId,
+					collectionKey, serverUri);
+			iots.connect();
+			iots.subscribe(iots.getEndpointTopic());
+			iots.setDefaultCallback(new IOTSMessageCallback() {
+				@Override
+				public void onMessage(String topic, String threadId, String source,
+						ContentType type, Object content, int status) {
 					
+					Log.w("om","====onMessage====");
+					Log.d("om","topic======="+topic);
+					Log.d("om","threadId======="+threadId);
+					Log.d("om","source======="+source);
+					Log.d("om","type======="+type);
+					Log.d("om","content======="+content);
+					Log.d("om","status======="+status);
+					 
+					Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 0).show();
 					completed();
-				}catch (Exception e){
-					
+					Log.d("IOTSTest", "Message Received from " + topic + ":"
+							+ content.toString());
 				}
-			}}).start();
+			});
+			completed();
+		}catch (Exception e){
+			Log.e("nevin","====="+e);
+		}
+		
+//		new Thread(new Runnable(){
+//
+//			@Override
+//			public void run() {
+//				try{
+//					Properties props = new Properties();
+//					props.load(SwitchActivity.this.getResources().getAssets().open(TEST_CONF_FILE));
+//					serverUri = props.getProperty("serverUri");
+//					collectionId = props.getProperty("collectionId");
+//					collectionKey = props.getProperty("collectionKey");
+//					iots = new IOTS(SwitchActivity.this, collectionId,
+//							collectionKey, serverUri);
+//					iots.connect();
+//					iots.subscribe(iots.getEndpointTopic());
+//					iots.setDefaultCallback(new IOTSMessageCallback() {
+//						@Override
+//						public void onMessage(String topic, String threadId, String source,
+//								ContentType type, Object content, int status) {
+//							
+//							Log.w("om","====onMessage====");
+//							Log.d("om","topic======="+topic);
+//							Log.d("om","threadId======="+threadId);
+//							Log.d("om","source======="+source);
+//							Log.d("om","type======="+type);
+//							Log.d("om","content======="+content);
+//							Log.d("om","status======="+status);
+//							 
+//							Toast.makeText(SwitchActivity.this, "echo:"+content.toString(), 0).show();
+//							completed();
+//							Log.d("IOTSTest", "Message Received from " + topic + ":"
+//									+ content.toString());
+//						}
+//					});
+//					completed();
+//				}catch (Exception e){
+//					
+//				}
+//			}}).start();
 	}
 
 	public void changeColor(String colorString){
-		Utils.showProgressDialog(this, "Changing color...",false);
-		// test color
+		Utils.showProgressDialog(this, "Changing color...",true);
+		// validate color
 		try {
 			Color.parseColor(colorString);
 		} catch (IllegalArgumentException e) {
@@ -146,24 +176,15 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 		
 		
 		// build command and send
-		new Thread(new Runnable(){
-
-			@Override
-			public void run() {
-				
-				try {
-					JSONObject cmd = new JSONObject();
-					cmd.put("cmd", "set");
-					cmd.put("color", color);
-					iots.publish(collectionId+"/"+"3879f470-fdd7-11e4-bad9-0577ec859bfd", cmd.toString() ); 
-					
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
-				
-				
-			}}).start();
-		
+		try {
+			JSONObject cmd = new JSONObject();
+			cmd.put("cmd", "set");
+			cmd.put("color", color);
+			iots.publish(collectionId+"/"+"3879f470-fdd7-11e4-bad9-0577ec859bfd", cmd.toString() ); 
+			
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		
 	}
 
@@ -175,7 +196,7 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 		return super.onKeyDown(keyCode, event);
 	}
 
-	@Override
+	@Override  
 	public void finish() {
 		try {
 			iots.disconnect();
@@ -183,11 +204,13 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 		} catch (MqttException e) {
 			e.printStackTrace();
 		}
-//		iots.deleteEndpoint();
+		
+		//iots.deleteEndpoint();
 		super.finish();
 	}
 
 	private void completed() {
+		
 		mHandler.post(new Runnable(){
 
 			@Override
@@ -201,9 +224,8 @@ public class SwitchActivity extends Activity implements  OnClickListener {
 	public void onClick(View v) {
 		if (v==this.mBtSend){
 			String strColor = String.format("#%06X", 0xFFFFFF & mPicker.getColor());
-//			Toast.makeText(this, "test:"+mPicker.getColor() + " is \n "+ strColor, 0).show();
 			Toast.makeText(this, ""+ strColor, 0).show();
-			changeColor("#00ff00");
+			changeColor(strColor);
 		}
 		
 	}
