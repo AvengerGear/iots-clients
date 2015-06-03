@@ -117,6 +117,19 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 
 		self.receiver = 'private/' + clientId;
 
+		self.client.on('message', function(topic, message, pkg) {
+			var data = {
+				topic: topic,
+				message: message,
+				pkg: pkg
+			};
+
+			// Handler to deal with command response from server
+			self.negotiator.handle(data, function() {
+				self.emit('message', topic, message, pkg);
+			});
+		});
+
 		// TODO: handle error situation
 		self.client.on('error', function() {
 			console.log(arguments);
@@ -127,20 +140,6 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 		});
 
 		self.client.on('connect', function(packet) {
-
-			self.client.on('message', function(topic, message, pkg) {
-				var data = {
-					topic: topic,
-					message: message,
-					pkg: pkg
-				};
-
-				// Handler to deal with command response from server
-				self.negotiator.handle(data, function() {
-					self.emit('message', topic, message, pkg);
-				});
-			});
-
 			self.emit('connect');
 		});
 	}
@@ -166,10 +165,10 @@ MQTTBackend.prototype.publish = function(topicPath, packet) {
 		opts = arguments[2];
 		callback = arguments[3];
 	} else if (arguments.length == 3) {
-		opts = {};
+		opts = { qos: 0, retain: true };
 		callback = arguments[2];
 	} else {
-		opts = {};
+		opts = { qos: 0, retain: true };
 	}
 
 	if (!packet.id)
