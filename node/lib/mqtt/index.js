@@ -105,7 +105,7 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 		clientId = null;
 
 	// Create a connection
-	self.client = mqtt.createClient(opts.port, opts.host, {
+	self.client = mqtt.connect('mqtt://' + opts.host + ':' + opts.port, {
 		clientId: clientId,
 		username: username || '',
 		password: password || ''
@@ -140,6 +140,10 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 
 		self.client.on('connect', function(packet) {
 			self.emit('connect');
+		});
+		self.client.on('pingreq', function (packet) {
+			console.log('PINGREQ(%s)', client.id);
+			self.client.pingresp();
 		});
 	}
 
