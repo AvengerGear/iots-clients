@@ -42,47 +42,48 @@ MQTTBackend.prototype.register = function(collectionId, accessKey, options, call
 			var receiver = 'anonymous/' + self.client.options.clientId;
 
 			// Subscribe to private channel to receive messages from server
-			self.subscribe(receiver);
+			self.subscribe(receiver, function() {
 
-			self.client.on('message', function(topic, message, pkg) {
-				var data = {
-					topic: topic,
-					message: message,
-					pkg: pkg
-				};
+				self.client.on('message', function(topic, message, pkg) {
+					var data = {
+						topic: topic,
+						message: message,
+						pkg: pkg
+					};
 
-				// Handler to deal with command response from server
-				self.negotiator.handle(data, function() {
-					callback(new Error('Unknown response'));
+					// Handler to deal with command response from server
+					self.negotiator.handle(data, function() {
+						callback(new Error('Unknown response'));
+					});
 				});
-			});
 
-			// Register a new endpoint
-			self.negotiator.request(self.API.Endpoint, receiver, 1, {
-				cmd: 'Register',
-				collectionId: collectionId,
-				accessKey: accessKey,
-			}, function(err, message) {
+				// Register a new endpoint
+				self.negotiator.request(self.API.Endpoint, receiver, 1, {
+					cmd: 'Register',
+					collectionId: collectionId,
+					accessKey: accessKey,
+				}, function(err, message) {
 
-				if (err) {
-					callback(err);
-					return;
-				}
+					if (err) {
+						callback(err);
+						return;
+					}
 
-				if (message.status == 403) {
-					callback(new Error('Forbidden'));
-					return;
-				}
+					if (message.status == 403) {
+						callback(new Error('Forbidden'));
+						return;
+					}
 
-				// Success
-				if (message.status == 200) {
+					// Success
+					if (message.status == 200) {
 
-					// Return endpoint ID and secret key
-					callback(null, message.content);
+						// Return endpoint ID and secret key
+						callback(null, message.content);
 
-					// Close anonymous connection
-					self.client.end();
-				}
+						// Close anonymous connection
+						self.client.end();
+					}
+				});
 			});
 		});
 	});
@@ -145,10 +146,13 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 	callback(null);
 };
 
-MQTTBackend.prototype.subscribe = function(topicPath) {
+MQTTBackend.prototype.subscribe = function(topicPath, cb) {
 	var self = this;
 
-	self.client.subscribe(topicPath);
+	self.client.subscribe(topicPath, function() {
+		if (cb)
+			cb();
+	});
 };
 
 MQTTBackend.prototype.publish = function(topicPath, packet) {

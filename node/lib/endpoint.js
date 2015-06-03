@@ -108,8 +108,9 @@ Endpoint.prototype.subscribe = function() {
 	// No need to check permission and send request if this topic belongs to me
 	var pathObj = topic.split('/');
 	if (pathObj[0] == self.collectionId && pathObj[1] == self.id) {
-		self.backend.subscribe(topic);
-		callback(null);
+		self.backend.subscribe(topic, function() {
+			callback(null);
+		});
 		return;
 	}
 
@@ -133,7 +134,10 @@ Endpoint.prototype.subscribe = function() {
 		// Success
 		if (message.status == 200) {
 			// Subscribe to topic immediately
-			self.backend.subscribe(topic);
+			self.backend.subscribe(topic, function() {
+				callback(null);
+			});
+			return;
 		}
 
 		callback(null);
