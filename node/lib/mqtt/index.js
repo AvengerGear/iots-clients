@@ -105,7 +105,8 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 		clientId = null;
 
 	// Create a connection
-	self.client = mqtt.connect('mqtt://' + opts.host + ':' + opts.port, {
+	var protocol = opts.secure ? 'mqtts' : 'mqtt';
+	self.client = mqtt.connect(protocol + '://' + opts.host + ':' + opts.port, {
 		clientId: clientId,
 		username: username || '',
 		password: password || ''
@@ -115,19 +116,6 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 	if (!opts.anonymous) {
 
 		self.receiver = 'private/' + clientId;
-
-		self.client.on('message', function(topic, message, pkg) {
-			var data = {
-				topic: topic,
-				message: message,
-				pkg: pkg
-			};
-
-			// Handler to deal with command response from server
-			self.negotiator.handle(data, function() {
-				self.emit('message', topic, message, pkg);
-			});
-		});
 
 		// TODO: handle error situation
 		self.client.on('error', function() {
@@ -139,11 +127,21 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 		});
 
 		self.client.on('connect', function(packet) {
+
+			self.client.on('message', function(topic, message, pkg) {
+				var data = {
+					topic: topic,
+					message: message,
+					pkg: pkg
+				};
+
+				// Handler to deal with command response from server
+				self.negotiator.handle(data, function() {
+					self.emit('message', topic, message, pkg);
+				});
+			});
+
 			self.emit('connect');
-		});
-		self.client.on('pingreq', function (packet) {
-			console.log('PINGREQ(%s)', client.id);
-			self.client.pingresp();
 		});
 	}
 
@@ -159,13 +157,25 @@ MQTTBackend.prototype.subscribe = function(topicPath, cb) {
 	});
 };
 
-MQTTBackend.prototype.publish = function(topicPath, packet, callback) {
+MQTTBackend.prototype.publish = function(topicPath, packet) {
 	var self = this;
+
+	var opts = null;
+	var callback = null;
+	if (arguments.length == 4) {
+		opts = arguments[2];
+		callback = arguments[3];
+	} else if (arguments.length == 3) {
+		opts = {};
+		callback = arguments[2];
+	} else {
+		opts = {};
+	}
 
 	if (!packet.id)
 		packet.id = Date.now() + crypto.randomBytes(16).toString('hex');
 
-	self.client.publish(topicPath, JSON.stringify(packet), function() {
+	self.client.publish(topicPath, JSON.stringify(packet), opts, function() {
 		if (callback)
 			callback(null, packet.id);
 	});
