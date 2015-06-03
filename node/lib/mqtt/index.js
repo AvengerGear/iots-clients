@@ -155,13 +155,16 @@ MQTTBackend.prototype.subscribe = function(topicPath, cb) {
 	});
 };
 
-MQTTBackend.prototype.publish = function(topicPath, packet) {
+MQTTBackend.prototype.publish = function(topicPath, packet, callback) {
 	var self = this;
 
 	if (!packet.id)
 		packet.id = Date.now() + crypto.randomBytes(16).toString('hex');
 
-	self.client.publish(topicPath, JSON.stringify(packet));
+	self.client.publish(topicPath, JSON.stringify(packet), function() {
+		if (callback)
+			callback(null, packet.id);
+	});
 
 	return packet.id;
 };

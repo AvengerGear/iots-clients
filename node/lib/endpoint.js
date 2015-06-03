@@ -135,7 +135,8 @@ Endpoint.prototype.subscribe = function() {
 		if (message.status == 200) {
 			// Subscribe to topic immediately
 			self.backend.subscribe(topic, function() {
-				callback(null);
+				if (callback)
+					callback(null);
 			});
 			return;
 		}
@@ -144,28 +145,44 @@ Endpoint.prototype.subscribe = function() {
 	});
 };
 
-Endpoint.prototype.publish = function(topic, options, message) {
+Endpoint.prototype.publish = function() {
 	var self = this;
 
 	var topic = null;
 	var options = null;
 	var message = null;
+	var callback = null;
 	if (arguments.length == 1) {
 		throw new Error('require two parameters at least');
 	} else if (arguments.length == 2) {
 		topic = arguments[0];
 		options = {};
 		message = arguments[1];
+	} else if (arguments.length == 3) {
+		topic = arguments[0];
+
+		if ('function' === typeof arguments[2]) {
+			message = arguments[1];
+			options = {};
+			callback = arguments[2];
+		} else {
+			options = arguments[1]
+			message = arguments[2];
+		}
 	} else {
 		topic = arguments[0];
 		options = arguments[1]
 		message = arguments[2];
+		callback = arguments[3];
 	}
 
 	return self.backend.publish(topic, {
 		type: options.contentType || self.ContentType.Plain,
 		source: self.collectionId + '/' + self.id,
 		content: message
+	}, function() {
+		if (callback)
+			callback();
 	});
 };
 

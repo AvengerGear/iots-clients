@@ -41,6 +41,7 @@ Negotiator.prototype.request = function(targetPath, receiver, type, data, callba
 		type: type,
 		source: receiver,
 		content: (type == self.ContentType.Plain) ? data : JSON.stringify(data)
+	}, function() {
 	});
 
 	// TODO: timeout to remove handler
