@@ -180,9 +180,9 @@ Endpoint.prototype.publish = function() {
 		type: options.contentType || self.ContentType.Plain,
 		source: self.collectionId + '/' + self.id,
 		content: message
-	}, function() {
+	}, function(err) {
 		if (callback)
-			callback();
+			callback(err);
 	});
 };
 

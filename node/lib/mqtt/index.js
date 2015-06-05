@@ -174,9 +174,9 @@ MQTTBackend.prototype.publish = function(topicPath, packet) {
 	if (!packet.id)
 		packet.id = Date.now() + crypto.randomBytes(16).toString('hex');
 
-	self.client.publish(topicPath, JSON.stringify(packet), opts, function() {
+	self.client.publish(topicPath, JSON.stringify(packet), opts, function(err) {
 		if (callback)
-			callback(null, packet.id);
+			callback(err, packet.id);
 	});
 
 	return packet.id;
