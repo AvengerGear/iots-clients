@@ -24,17 +24,6 @@ Negotiator.prototype.request = function(targetPath, receiver, type, data, callba
 	// Generate a message ID
 	var id = Date.now() + crypto.randomBytes(16).toString('hex');
 
-	// Response handler
-	self.once(id, function(message) {
-
-		if (message.status == 500) {
-			callback(new Error('Server Internal Error'), message);
-			return;
-		}
-
-		callback(null, message);
-	});
-
 	// Send request to specific topic or channel
 	self.backend.publish(targetPath, {
 		id: id,
@@ -42,6 +31,17 @@ Negotiator.prototype.request = function(targetPath, receiver, type, data, callba
 		source: receiver,
 		content: (type == self.ContentType.Plain) ? data : JSON.stringify(data)
 	}, function() {
+
+		// Response handler
+		self.once(id, function(message) {
+
+			if (message.status == 500) {
+				callback(new Error('Server Internal Error'), message);
+				return;
+			}
+
+			callback(null, message);
+		});
 	});
 
 	// TODO: timeout to remove handler

@@ -162,7 +162,7 @@ MQTTBackend.prototype.publish = function(topicPath, packet) {
 	var opts = null;
 	var callback = null;
 	if (arguments.length == 4) {
-		opts = arguments[2];
+		opts = arguments[2] || {};
 		callback = arguments[3];
 	} else if (arguments.length == 3) {
 		opts = { qos: 0, retain: true };

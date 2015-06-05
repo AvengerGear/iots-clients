@@ -13,7 +13,6 @@ var connect = module.exports = function(network, endpoint, next) {
 				cmd: 'Auth',
 				passphrase: endpoint.passphrase
 			}, function(err, packet) {
-
 				// Getting collection ID
 				endpoint.collectionId = packet.content._collection;
 
