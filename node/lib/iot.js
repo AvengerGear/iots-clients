@@ -60,6 +60,7 @@ var IoT = module.exports = function(options) {
 		return;
 	}
 
+	// Created a default endpoint
 	var endpoint = new IoT.Endpoint(options.endpointId || '', options.passphrase || '');
 	self.network.addEndpoint(endpoint);
 };
