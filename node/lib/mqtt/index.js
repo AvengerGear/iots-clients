@@ -150,25 +150,22 @@ MQTTBackend.prototype.connect = function(username, password, options, callback) 
 MQTTBackend.prototype.subscribe = function(topicPath, cb) {
 	var self = this;
 
-	self.client.subscribe(topicPath, function() {
+	self.client.subscribe(topicPath, function(err) {
 		if (cb)
-			cb();
+			cb(err);
 	});
 };
 
 MQTTBackend.prototype.publish = function(topicPath, packet) {
 	var self = this;
 
-	var opts = null;
+	var opts = { qos: 1, retain: false };
 	var callback = null;
 	if (arguments.length == 4) {
-		opts = arguments[2] || {};
+		opts = arguments[2] || opts;
 		callback = arguments[3];
 	} else if (arguments.length == 3) {
-		opts = { qos: 0, retain: true };
 		callback = arguments[2];
-	} else {
-		opts = { qos: 0, retain: true };
 	}
 
 	if (!packet.id)

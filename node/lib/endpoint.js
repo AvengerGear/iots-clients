@@ -108,8 +108,8 @@ Endpoint.prototype.subscribe = function() {
 	// No need to check permission and send request if this topic belongs to me
 	var pathObj = topic.split('/');
 	if (pathObj[0] == self.collectionId && pathObj[1] == self.id) {
-		self.backend.subscribe(topic, function() {
-			callback(null);
+		self.backend.subscribe(topic, function(err) {
+			callback(err);
 		});
 		return;
 	}
@@ -134,9 +134,9 @@ Endpoint.prototype.subscribe = function() {
 		// Success
 		if (message.status == 200) {
 			// Subscribe to topic immediately
-			self.backend.subscribe(topic, function() {
+			self.backend.subscribe(topic, function(err) {
 				if (callback)
-					callback(null);
+					callback(err);
 			});
 			return;
 		}
@@ -156,14 +156,12 @@ Endpoint.prototype.publish = function() {
 		throw new Error('require two parameters at least');
 	} else if (arguments.length == 2) {
 		topic = arguments[0];
-		options = {};
 		message = arguments[1];
 	} else if (arguments.length == 3) {
 		topic = arguments[0];
 
 		if ('function' === typeof arguments[2]) {
 			message = arguments[1];
-			options = {};
 			callback = arguments[2];
 		} else {
 			options = arguments[1]
@@ -176,11 +174,16 @@ Endpoint.prototype.publish = function() {
 		callback = arguments[3];
 	}
 
+	var contentType = self.ContentType.Plain;
+	if (options) {
+		contentType = options.contentType || self.ContentType.Plain;
+	}
+
 	return self.backend.publish(topic, {
-		type: options.contentType || self.ContentType.Plain,
+		type: contentType,
 		source: self.collectionId + '/' + self.id,
 		content: message
-	}, function(err) {
+	}, options, function(err) {
 		if (callback)
 			callback(err);
 	});
