@@ -69,9 +69,9 @@ DemoMaster.prototype.start = function() {
 		} else if (self.pairTopicPath && topic === self.pairTopicPath) {
 			var opt = JSON.parse(message.content);
 			console.log("Received pair request from %s", message.source);
-			console.log("Pair code: %s", opt.pairCode);
-			if (self.pairCode === opt.pairCode) {
-				self.endpoint.publish(src, "authorize");
+			console.log("Pair code: %s", opt.options.pairCode);
+			if (self.pairCode === opt.options.pairCode) {
+				self.endpoint.publish(message.source, "authorize");
 			} else {
 				console.log("Pair codes do not match");
 			}
