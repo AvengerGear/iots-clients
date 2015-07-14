@@ -22,7 +22,16 @@ DemoDevice.prototype.connect = function() {
 		try {
 			var msg = JSON.parse(message);
 			// {s: "source", p: "pair code"}
-			self.runCommand(msg.s, {command: "pair", options: {pairCode: msg.p}});
+			var src = msg.s;
+			var pairCode = msg.p;
+			console.log("Received pair request from %s via audio", src);
+			console.log("Pair code: %s", pairCode);
+			this.endpoint.publish(this.config.collectionId + "/" + src + "/" + pairCode, JSON.stringify({
+				command: "pair",
+				options: {
+					pairCode: pairCode
+				}
+			}));
 		} catch (e) {
 			console.error(e);
 		}
@@ -69,7 +78,7 @@ DemoDevice.prototype.start = function() {
 	this.topicDispatcher = {};
 	this.topicDispatcher[self.endpointPath] = function(srcEndpoint, message) {
 		if (message.content === "authorize") {
-			if (self.authorize(srcEndpoint)) {
+			if (self.isAllowing(srcEndpoint)) { // If the endpoint is allowed
 				console.log("%s: authorized", srcEndpoint);
 				var srcEndpointPath = self.endpointPath + "/" + srcEndpoint;
 				self.endpoint.subscribe(srcEndpointPath, {}, function(err){
@@ -125,16 +134,6 @@ DemoDevice.prototype.commands = {
 				self.endpoint.publish(self.config.collectionId + "/" + opt.requestEndpoint, "authorized");
 			});
 		});
-	},
-	pair: function(src, opt) {
-		console.log("Received pair request from %s via audio", src);
-		console.log("Pair code: %s", opt.pairCode);
-		this.endpoint.publish(this.config.collectionId + "/" + src + "/" + opt.pairCode, JSON.stringify({
-			command: "pair",
-			options: {
-				pairCode: opt.pairCode
-			}
-		}));
 	}
 }
 
@@ -155,7 +154,7 @@ DemoDevice.prototype.topicHandlerFactory = function(topic) {
 }
 
 
-DemoDevice.prototype.authorize = function(endpoint) {
+DemoDevice.prototype.isAllowing = function(endpoint) {
 	if (endpoint === this.config.master || this.config.authorizedEndpoints.indexOf(endpoint) >= 0) {
 		return true;
 	}

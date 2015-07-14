@@ -61,7 +61,8 @@ DemoMaster.prototype.start = function() {
 					console.error(err);
 					return;
 				}
-				// TODO: change to the raspberry pi demo
+				// TODO: onAuthorized
+				self.emit('authorized', endpoint);
 				self.endpoint.publish(targetTopic, JSON.stringify({command: "unlock"}));
 			});
 		} else if (message.content === "acknowledged") {
