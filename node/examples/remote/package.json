@@ -1,0 +1,16 @@
+{
+  "name": "remote",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "co": "^4.5.1",
+    "promisify": "0.0.3",
+    "wiring-pi": "git://github.com/nekuz0r/wiring-pi.git#incoming-node-v0.12.x"
+  }
+}
